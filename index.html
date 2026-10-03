@@ -61,7 +61,7 @@
     -webkit-font-smoothing: antialiased;
   }
   .wrap {
-    max-width: 640px;
+    max-width: 880px;
     margin: 0 auto;
     padding: 28px 20px 64px;
   }
@@ -291,6 +291,119 @@
     text-align: center;
   }
   a { color: var(--accent); }
+
+  .clip-card[data-editing="1"] { border-color: var(--accent); }
+  .clip-card .card-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .field input[type="date"] {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 8px 11px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 0.92rem;
+    color-scheme: light dark;
+  }
+  .form-actions { display: flex; gap: 10px; margin-top: 6px; }
+  .form-actions .log-btn { margin-top: 0; }
+  .cancel-btn {
+    padding: 11px 18px;
+    border-radius: 9px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--muted);
+    font-family: inherit;
+    font-size: 0.92rem;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .cancel-btn:hover { color: var(--text); }
+  [hidden] { display: none !important; }
+
+  /* Rich-text notes editor */
+  .editor {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--bg);
+    overflow: hidden;
+  }
+  .editor:focus-within { border-color: var(--accent); }
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    padding: 5px;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface-2);
+  }
+  .toolbar .sep { width: 1px; background: var(--line); margin: 3px 4px; }
+  .tool-btn {
+    min-width: 32px;
+    height: 30px;
+    padding: 0 8px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+  .tool-btn:hover { background: var(--surface); border-color: var(--line); }
+  .tool-btn[aria-pressed="true"] { background: var(--surface); border-color: var(--accent); color: var(--accent); }
+  .notes-input {
+    min-height: 220px;
+    max-height: 70vh;
+    overflow-y: auto;
+    resize: vertical;
+    padding: 12px 14px;
+    color: var(--text);
+    font-size: 0.95rem;
+    line-height: 1.65;
+    outline: none;
+  }
+  .notes-input.is-empty::before {
+    content: attr(data-placeholder);
+    color: var(--muted);
+    pointer-events: none;
+  }
+  .rich p, .rich div { margin: 0; }
+  .rich ul, .rich ol { margin: 4px 0; padding-left: 1.5em; }
+  .rich mark { background: color-mix(in srgb, var(--accent) 35%, transparent); color: inherit; padding: 0 1px; border-radius: 2px; }
+
+  /* History entries: actions + collapsible notes */
+  .entry .head-row { display: flex; align-items: flex-start; gap: 10px; }
+  .entry .head-row .clip-title { flex: 1; min-width: 0; }
+  .entry-actions { display: flex; gap: 4px; flex-shrink: 0; }
+  .entry-actions button {
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--muted);
+    border-radius: 6px;
+    padding: 3px 9px;
+    font-family: inherit;
+    font-size: 0.72rem;
+    cursor: pointer;
+  }
+  .entry-actions button:hover { color: var(--text); border-color: var(--accent); }
+  .entry-actions button.danger[data-armed="1"] { background: #B3412E; border-color: #B3412E; color: #fff; }
+  .entry .notes { line-height: 1.6; }
+  .entry .notes.clamped { max-height: 9.6em; overflow: hidden; -webkit-mask-image: linear-gradient(#000 60%, transparent); mask-image: linear-gradient(#000 60%, transparent); }
+  .more-btn {
+    border: none;
+    background: none;
+    padding: 2px 0;
+    margin-top: 2px;
+    color: var(--accent);
+    font-family: inherit;
+    font-size: 0.76rem;
+    cursor: pointer;
+  }
 </style>
 </head>
 <body>
@@ -318,8 +431,14 @@
     <div class="wave-labels" id="waveLabels"></div>
   </section>
 
-  <section class="clip-card">
-    <h2>Today's session</h2>
+  <section class="clip-card" id="clipCard">
+    <div class="card-head">
+      <h2 id="formHeading">Today's session</h2>
+    </div>
+    <div class="field" id="dateField" hidden>
+      <label for="sessionDate">Date</label>
+      <input type="date" id="sessionDate">
+    </div>
     <div class="field">
       <label for="clipTitle">Clip title</label>
       <input type="text" id="clipTitle" placeholder="e.g. My Year Living With a Robot — TED">
@@ -343,10 +462,28 @@
       </div>
     </div>
     <div class="field">
-      <label for="notes">Notes (tricky words, rhythm, anything to fix)</label>
-      <textarea id="notes" placeholder="e.g. struggled with 'autonomous', linking sounds in 'check it out'"></textarea>
+      <label id="notesLabel">Notes &amp; script (tricky words, rhythm, anything to fix)</label>
+      <div class="editor">
+        <div class="toolbar" role="toolbar" aria-label="Formatting">
+          <button type="button" class="tool-btn" data-cmd="bold" title="Bold (Ctrl+B)" aria-pressed="false"><b>B</b></button>
+          <button type="button" class="tool-btn" data-cmd="italic" title="Italic (Ctrl+I)" aria-pressed="false"><i>I</i></button>
+          <button type="button" class="tool-btn" data-cmd="underline" title="Underline (Ctrl+U)" aria-pressed="false"><u>U</u></button>
+          <button type="button" class="tool-btn" data-cmd="strikeThrough" title="Strikethrough" aria-pressed="false"><s>S</s></button>
+          <button type="button" class="tool-btn" data-cmd="highlight" title="Highlight (Ctrl+Shift+H)" aria-pressed="false"><mark style="background:color-mix(in srgb, var(--accent) 35%, transparent);color:inherit;padding:0 3px">H</mark></button>
+          <span class="sep" aria-hidden="true"></span>
+          <button type="button" class="tool-btn" data-cmd="insertUnorderedList" title="Bullet list" aria-pressed="false">• List</button>
+          <button type="button" class="tool-btn" data-cmd="insertOrderedList" title="Numbered list" aria-pressed="false">1. List</button>
+          <span class="sep" aria-hidden="true"></span>
+          <button type="button" class="tool-btn" data-cmd="removeFormat" title="Clear formatting">Clear</button>
+        </div>
+        <div class="notes-input rich is-empty" id="notes" contenteditable="true" role="textbox" aria-multiline="true" aria-labelledby="notesLabel"
+             data-placeholder="Paste the script here, or note tricky words, e.g. struggled with 'autonomous', linking in 'check it out'"></div>
+      </div>
     </div>
-    <button class="log-btn" id="logBtn" type="button">Log today's session</button>
+    <div class="form-actions">
+      <button class="log-btn" id="logBtn" type="button">Log today's session</button>
+      <button class="cancel-btn" id="cancelEditBtn" type="button" hidden>Cancel</button>
+    </div>
   </section>
 
   <section class="history">
@@ -363,8 +500,10 @@
   // Legacy localStorage key; only read once to import old sessions into SQLite.
   var STORAGE_KEY = "shadowing-tracker-sessions";
   var API = "/api/sessions";
+  var LOG_LABEL = "Log today's session";
   var confSelected = null;
   var sessionsCache = [];
+  var editing = null; // the session currently loaded into the form for editing
 
   function todayISO() {
     var d = new Date();
@@ -386,14 +525,51 @@
     });
   }
 
-  function postJSON(url, payload) {
+  function sendJSON(method, url, payload) {
     return fetch(url, {
-      method: "POST",
+      method: method,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
+      body: payload === undefined ? undefined : JSON.stringify(payload)
     }).then(function (res) {
-      if (!res.ok) throw new Error("POST " + url + " failed: " + res.status);
+      if (!res.ok) throw new Error(method + " " + url + " failed: " + res.status);
     });
+  }
+
+  function postJSON(url, payload) {
+    return sendJSON("POST", url, payload);
+  }
+
+  // Notes are stored as HTML. Only these tags survive; every attribute is dropped.
+  var ALLOWED_TAGS = { B: 1, STRONG: 1, I: 1, EM: 1, U: 1, S: 1, STRIKE: 1, MARK: 1, UL: 1, OL: 1, LI: 1, BR: 1, P: 1, DIV: 1 };
+  var DROPPED_TAGS = { SCRIPT: 1, STYLE: 1, TEMPLATE: 1, IFRAME: 1, OBJECT: 1, EMBED: 1, NOSCRIPT: 1 };
+
+  function sanitizeHTML(html) {
+    var doc = new DOMParser().parseFromString("<body>" + html + "</body>", "text/html");
+    var out = document.createElement("div");
+    (function copy(src, dest) {
+      src.childNodes.forEach(function (node) {
+        if (node.nodeType === Node.TEXT_NODE) {
+          dest.appendChild(document.createTextNode(node.nodeValue));
+        } else if (node.nodeType === Node.ELEMENT_NODE && !DROPPED_TAGS[node.tagName]) {
+          if (ALLOWED_TAGS[node.tagName]) {
+            var el = document.createElement(node.tagName);
+            dest.appendChild(el);
+            copy(node, el);
+          } else {
+            copy(node, dest); // keep the text of unknown tags, drop the tag itself
+          }
+        }
+      });
+    })(doc.body, out);
+    return out.innerHTML;
+  }
+
+  // Older notes are plain text; newer ones are HTML from the editor.
+  function notesToHTML(notes) {
+    if (/<\/?[a-z][^>]*>/i.test(notes)) return sanitizeHTML(notes);
+    var d = document.createElement("div");
+    d.textContent = notes;
+    return d.innerHTML.replace(/\n/g, "<br>");
   }
 
   // One-time move of sessions saved by the old localStorage version into SQLite.
@@ -536,17 +712,83 @@
       body.appendChild(titleEl);
       body.appendChild(meta);
 
+      var headRow = document.createElement("div");
+      headRow.className = "head-row";
+      headRow.appendChild(titleEl);
+      headRow.appendChild(entryActions(s));
+      body.insertBefore(headRow, meta);
+
+      var notes = null;
       if (s.notes) {
-        var notes = document.createElement("div");
-        notes.className = "notes";
-        notes.textContent = s.notes;
+        notes = document.createElement("div");
+        notes.className = "notes rich clamped";
+        notes.innerHTML = notesToHTML(s.notes);
         body.appendChild(notes);
       }
 
       entry.appendChild(date);
       entry.appendChild(body);
       list.appendChild(entry);
+
+      // Long scripts start collapsed; only offer "Show more" when there is more to show.
+      if (notes) {
+        if (notes.scrollHeight <= notes.clientHeight + 2) {
+          notes.classList.remove("clamped");
+        } else {
+          var more = document.createElement("button");
+          more.type = "button";
+          more.className = "more-btn";
+          more.textContent = "Show more";
+          more.addEventListener("click", function () {
+            var collapsed = notes.classList.toggle("clamped");
+            more.textContent = collapsed ? "Show more" : "Show less";
+          });
+          body.appendChild(more);
+        }
+      }
     });
+  }
+
+  function entryActions(s) {
+    var wrap = document.createElement("div");
+    wrap.className = "entry-actions";
+
+    var edit = document.createElement("button");
+    edit.type = "button";
+    edit.textContent = "Edit";
+    edit.addEventListener("click", function () { startEdit(s); });
+
+    // Two-step delete: first click arms the button, second click within 3s deletes.
+    var del = document.createElement("button");
+    del.type = "button";
+    del.className = "danger";
+    del.textContent = "Delete";
+    var disarmTimer = null;
+    del.addEventListener("click", function () {
+      if (del.getAttribute("data-armed") !== "1") {
+        del.setAttribute("data-armed", "1");
+        del.textContent = "Delete?";
+        disarmTimer = setTimeout(function () {
+          del.removeAttribute("data-armed");
+          del.textContent = "Delete";
+        }, 3000);
+        return;
+      }
+      clearTimeout(disarmTimer);
+      del.disabled = true;
+      sendJSON("DELETE", API + "/" + s.id).then(function () {
+        if (editing && editing.id === s.id) resetForm();
+        return fetchSessions();
+      }).then(renderAll).catch(function (e) {
+        console.error(e);
+        del.disabled = false;
+        del.textContent = "Failed — retry";
+      });
+    });
+
+    wrap.appendChild(edit);
+    wrap.appendChild(del);
+    return wrap;
   }
 
   function renderAll() {
@@ -556,17 +798,177 @@
     renderHistory(sessions);
   }
 
+  function setConfidence(val) {
+    confSelected = val || null;
+    document.querySelectorAll(".conf-btn").forEach(function (b) {
+      b.setAttribute("aria-pressed", Number(b.getAttribute("data-val")) === confSelected ? "true" : "false");
+    });
+  }
+
   function setupConfidence() {
-    var buttons = document.querySelectorAll(".conf-btn");
-    buttons.forEach(function (btn) {
+    document.querySelectorAll(".conf-btn").forEach(function (btn) {
       btn.addEventListener("click", function () {
         var val = Number(btn.getAttribute("data-val"));
-        confSelected = confSelected === val ? null : val;
-        buttons.forEach(function (b) {
-          b.setAttribute("aria-pressed", Number(b.getAttribute("data-val")) === confSelected ? "true" : "false");
-        });
+        setConfidence(confSelected === val ? null : val);
       });
     });
+  }
+
+  // ---- Notes editor -------------------------------------------------------
+
+  function notesEl() {
+    return document.getElementById("notes");
+  }
+
+  function getNotes() {
+    var ed = notesEl();
+    if (!ed.textContent.trim()) return "";
+    return sanitizeHTML(ed.innerHTML);
+  }
+
+  function setNotes(notes) {
+    notesEl().innerHTML = notes ? notesToHTML(notes) : "";
+    updateNotesEmpty();
+  }
+
+  function updateNotesEmpty() {
+    var ed = notesEl();
+    ed.classList.toggle("is-empty", !ed.textContent.trim() && !ed.querySelector("li"));
+  }
+
+  function closestIn(node, tagName, root) {
+    while (node && node !== root) {
+      if (node.nodeName === tagName) return node;
+      node = node.parentNode;
+    }
+    return null;
+  }
+
+  function unwrap(el) {
+    var parent = el.parentNode;
+    while (el.firstChild) parent.insertBefore(el.firstChild, el);
+    parent.removeChild(el);
+  }
+
+  function selectionRangeIn(root) {
+    var sel = window.getSelection();
+    if (!sel.rangeCount) return null;
+    var range = sel.getRangeAt(0);
+    return root.contains(range.commonAncestorContainer) ? range : null;
+  }
+
+  // execCommand has no native <mark> support, so highlight is done by hand.
+  function toggleHighlight(ed) {
+    var range = selectionRangeIn(ed);
+    if (!range) return;
+    var mark = closestIn(range.commonAncestorContainer, "MARK", ed);
+    if (mark) {
+      unwrap(mark);
+      return;
+    }
+    if (range.collapsed) return;
+    var holder = document.createElement("div");
+    holder.appendChild(range.cloneContents());
+    holder.querySelectorAll("mark").forEach(unwrap);
+    document.execCommand("insertHTML", false, "<mark>" + holder.innerHTML + "</mark>");
+  }
+
+  function clearFormatting(ed) {
+    var range = selectionRangeIn(ed);
+    document.execCommand("removeFormat");
+    if (range) {
+      ed.querySelectorAll("mark").forEach(function (m) {
+        if (range.intersectsNode(m)) unwrap(m);
+      });
+    }
+  }
+
+  function setupEditor() {
+    var ed = notesEl();
+    var buttons = document.querySelectorAll(".tool-btn");
+    try { document.execCommand("styleWithCSS", false, false); } catch (e) {}
+
+    function run(cmd) {
+      ed.focus();
+      if (cmd === "highlight") toggleHighlight(ed);
+      else if (cmd === "removeFormat") clearFormatting(ed);
+      else document.execCommand(cmd);
+      updateNotesEmpty();
+      updateToolbar();
+    }
+
+    function updateToolbar() {
+      var sel = window.getSelection();
+      var inside = sel.rangeCount > 0 && ed.contains(sel.anchorNode);
+      buttons.forEach(function (btn) {
+        var cmd = btn.getAttribute("data-cmd");
+        if (cmd === "removeFormat") return;
+        var on = false;
+        if (inside) {
+          on = cmd === "highlight" ? !!closestIn(sel.anchorNode, "MARK", ed) : document.queryCommandState(cmd);
+        }
+        btn.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+    }
+
+    buttons.forEach(function (btn) {
+      btn.addEventListener("mousedown", function (e) { e.preventDefault(); }); // keep the text selection
+      btn.addEventListener("click", function () { run(btn.getAttribute("data-cmd")); });
+    });
+
+    ed.addEventListener("keydown", function (e) {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "h") {
+        e.preventDefault();
+        run("highlight");
+      }
+    });
+
+    // Paste as plain text so scripts copied from web pages don't bring their styling along.
+    ed.addEventListener("paste", function (e) {
+      e.preventDefault();
+      var text = (e.clipboardData || window.clipboardData).getData("text/plain");
+      document.execCommand("insertText", false, text);
+    });
+
+    ed.addEventListener("input", updateNotesEmpty);
+    document.addEventListener("selectionchange", updateToolbar);
+  }
+
+  // ---- Edit mode ----------------------------------------------------------
+
+  function startEdit(s) {
+    editing = s;
+    document.getElementById("clipTitle").value = s.clipTitle || "";
+    document.getElementById("clipUrl").value = s.clipUrl || "";
+    document.getElementById("reps").value = s.reps || 1;
+    document.getElementById("sessionDate").value = s.date;
+    setConfidence(s.confidence);
+    setNotes(s.notes);
+
+    document.getElementById("dateField").hidden = false;
+    document.getElementById("cancelEditBtn").hidden = false;
+    document.getElementById("formHeading").textContent = "Editing session · " + dateLabel(s.date);
+    document.getElementById("logBtn").textContent = "Save changes";
+    var card = document.getElementById("clipCard");
+    card.setAttribute("data-editing", "1");
+    card.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function resetForm() {
+    var wasEditing = !!editing;
+    editing = null;
+    if (wasEditing) {
+      document.getElementById("clipTitle").value = "";
+      document.getElementById("clipUrl").value = "";
+      document.getElementById("reps").value = 5;
+    }
+    setConfidence(null);
+    setNotes("");
+    document.getElementById("dateField").hidden = true;
+    document.getElementById("cancelEditBtn").hidden = true;
+    document.getElementById("formHeading").textContent = "Today's session";
+    document.getElementById("logBtn").textContent = LOG_LABEL;
+    document.getElementById("clipCard").removeAttribute("data-editing");
   }
 
   // Fill the clip title from the link, without overwriting a title the person typed.
@@ -605,29 +1007,31 @@
   }
 
   function setupLogging() {
+    document.getElementById("cancelEditBtn").addEventListener("click", resetForm);
+
     document.getElementById("logBtn").addEventListener("click", function () {
-      var clipTitle = document.getElementById("clipTitle").value.trim();
-      var clipUrl = document.getElementById("clipUrl").value.trim();
-      var reps = Number(document.getElementById("reps").value) || 1;
-      var notes = document.getElementById("notes").value.trim();
       var btn = this;
+      var payload = {
+        clipTitle: document.getElementById("clipTitle").value.trim(),
+        clipUrl: document.getElementById("clipUrl").value.trim(),
+        reps: Number(document.getElementById("reps").value) || 1,
+        confidence: confSelected,
+        notes: getNotes()
+      };
+      var request;
+      if (editing) {
+        payload.date = document.getElementById("sessionDate").value || editing.date;
+        payload.loggedAt = editing.loggedAt;
+        request = sendJSON("PUT", API + "/" + editing.id, payload);
+      } else {
+        payload.date = todayISO();
+        payload.loggedAt = new Date().toISOString();
+        request = postJSON(API, payload);
+      }
 
       btn.disabled = true;
-      btn.textContent = "Log today's session";
-      postJSON(API, {
-        date: todayISO(),
-        loggedAt: new Date().toISOString(),
-        clipTitle: clipTitle,
-        clipUrl: clipUrl,
-        reps: reps,
-        confidence: confSelected,
-        notes: notes
-      }).then(function () {
-        document.getElementById("notes").value = "";
-        confSelected = null;
-        document.querySelectorAll(".conf-btn").forEach(function (b) {
-          b.setAttribute("aria-pressed", "false");
-        });
+      request.then(function () {
+        resetForm();
         return fetchSessions();
       }).then(renderAll).catch(function (e) {
         console.error(e);
@@ -667,6 +1071,7 @@
 
   document.addEventListener("DOMContentLoaded", function () {
     setupConfidence();
+    setupEditor();
     setupLogging();
     setupAutoTitle();
     setupTheme();

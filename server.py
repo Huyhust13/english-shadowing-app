@@ -59,7 +59,7 @@ def clean(s):
         str(s.get("clipUrl") or "")[:2000],
         max(1, min(int(s.get("reps") or 1), 1000)),
         conf,
-        str(s.get("notes") or "")[:5000],
+        str(s.get("notes") or "")[:200000],
     )
 
 
@@ -107,6 +107,12 @@ def fetch_title(url):
     return ""
 
 
+def session_id(path):
+    """Return the id from /api/sessions/<id>, or None if path doesn't match."""
+    m = re.fullmatch(r"/api/sessions/(\d+)", path)
+    return int(m.group(1)) if m else None
+
+
 class Handler(BaseHTTPRequestHandler):
     def send_json(self, status, payload):
         body = json.dumps(payload).encode()
@@ -133,9 +139,12 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/api/sessions":
             with connect() as conn:
                 rows = conn.execute(
-                    "SELECT " + ", ".join(COLUMNS) + " FROM sessions ORDER BY date, loggedAt"
+                    "SELECT id, " + ", ".join(COLUMNS) + " FROM sessions ORDER BY date, loggedAt"
                 ).fetchall()
             self.send_json(200, [dict(r) for r in rows])
+        elif path == "/favicon.ico":
+            self.send_response(204)
+            self.end_headers()
         elif path == "/api/title":
             query = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
             try:
@@ -163,6 +172,34 @@ class Handler(BaseHTTPRequestHandler):
         except (ValueError, TypeError, json.JSONDecodeError) as e:
             return self.send_json(400, {"error": str(e)})
         self.send_json(201, {"ok": True})
+
+    def do_PUT(self):
+        sid = session_id(self.path.split("?", 1)[0])
+        if sid is None:
+            return self.send_json(404, {"error": "not found"})
+        try:
+            row = clean(self.read_json())
+        except (ValueError, TypeError, json.JSONDecodeError) as e:
+            return self.send_json(400, {"error": str(e)})
+        with connect() as conn:
+            cur = conn.execute(
+                "UPDATE sessions SET date=?, loggedAt=?, clipTitle=?, clipUrl=?, reps=?, confidence=?, notes=?"
+                " WHERE id=?",
+                row + (sid,),
+            )
+        if cur.rowcount == 0:
+            return self.send_json(404, {"error": "no such session"})
+        self.send_json(200, {"ok": True})
+
+    def do_DELETE(self):
+        sid = session_id(self.path.split("?", 1)[0])
+        if sid is None:
+            return self.send_json(404, {"error": "not found"})
+        with connect() as conn:
+            cur = conn.execute("DELETE FROM sessions WHERE id=?", (sid,))
+        if cur.rowcount == 0:
+            return self.send_json(404, {"error": "no such session"})
+        self.send_json(200, {"ok": True})
 
 
 if __name__ == "__main__":

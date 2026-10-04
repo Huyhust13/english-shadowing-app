@@ -113,6 +113,15 @@ def session_id(path):
     return int(m.group(1)) if m else None
 
 
+# Only these files are served, so nothing else in the app folder (like the DB) is exposed.
+STATIC_FILES = {
+    "/icons/icon.svg": ("icons/icon.svg", "image/svg+xml"),
+    "/icons/icon-32.png": ("icons/icon-32.png", "image/png"),
+    "/favicon.ico": ("icons/icon-32.png", "image/png"),
+    "/apple-touch-icon.png": ("icons/apple-touch-icon.png", "image/png"),
+}
+
+
 class Handler(BaseHTTPRequestHandler):
     def send_json(self, status, payload):
         body = json.dumps(payload).encode()
@@ -126,16 +135,23 @@ class Handler(BaseHTTPRequestHandler):
         length = int(self.headers.get("Content-Length") or 0)
         return json.loads(self.rfile.read(length) or b"null")
 
+    def send_file(self, name, content_type, max_age=0):
+        with open(os.path.join(BASE_DIR, name), "rb") as f:
+            body = f.read()
+        self.send_response(200)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(body)))
+        if max_age:
+            self.send_header("Cache-Control", f"public, max-age={max_age}")
+        self.end_headers()
+        self.wfile.write(body)
+
     def do_GET(self):
         path = self.path.split("?", 1)[0]
         if path in ("/", "/index.html"):
-            with open(os.path.join(BASE_DIR, "index.html"), "rb") as f:
-                body = f.read()
-            self.send_response(200)
-            self.send_header("Content-Type", "text/html; charset=utf-8")
-            self.send_header("Content-Length", str(len(body)))
-            self.end_headers()
-            self.wfile.write(body)
+            self.send_file("index.html", "text/html; charset=utf-8")
+        elif path in STATIC_FILES:
+            self.send_file(*STATIC_FILES[path], max_age=86400)
         elif path == "/api/sessions":
             with connect() as conn:
                 rows = conn.execute(

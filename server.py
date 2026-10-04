@@ -158,9 +158,6 @@ class Handler(BaseHTTPRequestHandler):
                     "SELECT id, " + ", ".join(COLUMNS) + " FROM sessions ORDER BY date, loggedAt"
                 ).fetchall()
             self.send_json(200, [dict(r) for r in rows])
-        elif path == "/favicon.ico":
-            self.send_response(204)
-            self.end_headers()
         elif path == "/api/title":
             query = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
             try:

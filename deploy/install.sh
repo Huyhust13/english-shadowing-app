@@ -29,7 +29,11 @@ systemctl daemon-reload
 systemctl enable --now "$SERVICE"
 systemctl restart "$SERVICE"
 
-sleep 1
+# Python can take a few seconds to start on slow machines (e.g. a Raspberry Pi).
+for _ in $(seq 1 15); do
+  curl -fsS -o /dev/null "http://${HOSTNAME_ALIAS}/" 2>/dev/null && break
+  sleep 1
+done
 if curl -fsS -o /dev/null "http://${HOSTNAME_ALIAS}/"; then
   echo "Done: http://${HOSTNAME_ALIAS}/ is up (service: ${SERVICE}, user: ${APP_USER})"
 else

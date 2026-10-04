@@ -3,6 +3,7 @@
 # Run deploy/setup-telegram.py first to connect your bot.
 # Usage: ./deploy/install-reminder.sh [HH:MM]     default 20:00
 #        ./deploy/install-reminder.sh --remove
+# Set SHADOWING_URL to change the link in the message (default http://english.nvh/).
 set -euo pipefail
 
 NAME="shadowing-reminder"
@@ -30,6 +31,7 @@ Description=Shadowing Tracker: remind if no session logged today
 
 [Service]
 Type=oneshot
+Environment=SHADOWING_URL=${SHADOWING_URL:-http://english.nvh/}
 ExecStart=/usr/bin/python3 $APP_DIR/deploy/remind.py
 # Retry if the network is down at reminder time.
 Restart=on-failure
@@ -51,4 +53,4 @@ EOF
 systemctl --user daemon-reload
 systemctl --user enable --now "$NAME.timer"
 echo "Reminder set for $TIME daily."
-systemctl --user list-timers "$NAME.timer" --no-pager | head -2
+systemctl --user list-timers "$NAME.timer" --no-pager | head -2 || true

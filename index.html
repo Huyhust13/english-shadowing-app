@@ -608,7 +608,8 @@
       cursor = daysAgoISO(1);
       if (!daysWithSession[cursor]) return 0;
     }
-    var i = 0;
+    // Count back from yesterday when today isn't logged yet, so the streak survives until midnight.
+    var i = cursor === todayISO() ? 0 : 1;
     while (daysWithSession[daysAgoISO(i)]) {
       streak++;
       i++;

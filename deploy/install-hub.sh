@@ -3,6 +3,8 @@
 #
 #   deploy/install-hub.sh            install/update and (re)start, port 8090
 #   PORT=9000 deploy/install-hub.sh  use another port
+#   SHADOWING_DB=~/shadowing-app/data/shadowing.db deploy/install-hub.sh
+#                                    share the shadowing log with an existing Shadowing Tracker
 #   deploy/install-hub.sh --remove   stop and remove the service (data is kept)
 #
 # Code runs from this checkout; data lives in ~/.local/share/english-hub/data, and the
@@ -15,6 +17,7 @@ SHARE="${XDG_DATA_HOME:-$HOME/.local/share}/english-hub"
 VENV="$SHARE/venv"
 DATA_DIR="$SHARE/data"
 PORT="${PORT:-8090}"
+SHADOWING_DB="${SHADOWING_DB:-$DATA_DIR/shadowing.db}"
 UNIT_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 UNIT="$UNIT_DIR/english-hub.service"
 
@@ -34,7 +37,7 @@ fi
 "$VENV/bin/pip" install -q -r "$APP_DIR/requirements.txt"
 
 sed -e "s|__APP_DIR__|$APP_DIR|g" -e "s|__VENV__|$VENV|g" \
-    -e "s|__DATA_DIR__|$DATA_DIR|g" -e "s|__PORT__|$PORT|g" \
+    -e "s|__DATA_DIR__|$DATA_DIR|g" -e "s|__PORT__|$PORT|g" -e "s|__SHADOWING_DB__|$SHADOWING_DB|g" \
     "$APP_DIR/deploy/english-hub.service" > "$UNIT"
 
 systemctl --user daemon-reload

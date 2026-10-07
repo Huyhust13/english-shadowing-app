@@ -9,7 +9,7 @@ WorkingDirectory=__APP_DIR__
 Environment=PYTHONUNBUFFERED=1
 Environment=HOST=0.0.0.0
 Environment=PORT=__PORT__
-Environment=SHADOWING_DB=__DATA_DIR__/shadowing.db
+Environment=SHADOWING_DB=__SHADOWING_DB__
 Environment=ANKI_DIR=__DATA_DIR__/anki
 ExecStart=__VENV__/bin/python __APP_DIR__/server.py
 Restart=on-failure

@@ -45,6 +45,24 @@ If Anki desktop on the same machine is already logged in, you can reuse its logi
 | `~/.local/share/english-hub/venv/` | Python venv with the `anki` package |
 | `journalctl --user -u english-hub -f` | logs |
 
+### On the Pi (next to the old Shadowing Tracker)
+
+The Pi runs English Hub on port 8090 (<http://english.nvh:8090>), next to the original
+app on port 80, and both use the **same** shadowing database, so sessions logged in
+either one show up in both (the hub only adds its `practice_days` table). The Telegram
+reminder keeps working unchanged.
+
+```sh
+rsync -av --exclude .git --exclude data/ --exclude __pycache__ --exclude .claude \
+  ./ huy@english.nvh:/home/huy/english-hub/
+ssh huy@english.nvh 'cd ~/english-hub && SHADOWING_DB=/home/huy/shadowing-app/data/shadowing.db ./deploy/install-hub.sh'
+```
+
+Then log in to AnkiWeb on the Vocab page (or copy `~/.config/english-hub/ankiweb.json`
+with mode `0600` from a machine that's already logged in). The first sync downloads the
+collection and ~15,000 media files (about 6 minutes on a Pi 4). Re-run the same two
+commands to update.
+
 ### How the Anki part works
 
 - `anki_service.py` uses the official [`anki`](https://pypi.org/project/anki/) Python

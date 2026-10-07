@@ -1,0 +1,214 @@
+/* Shared look for English Hub pages. shadowing.html keeps its own styles and only uses the nav. */
+:root {
+  --bg: #F1F0EC;
+  --surface: #FFFFFF;
+  --surface-2: #E7E5DE;
+  --text: #17211C;
+  --muted: #5E6B63;
+  --line: #D7D4CA;
+  --accent: #B4722E;
+  --accent-ink: #FFFFFF;
+  --success: #2F7A66;
+  --danger: #B3412E;
+  --wave-track: #DEDBD1;
+  --new: #2D6FB7;
+  --learn: #B3412E;
+  --review: #2F7A66;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11181A;
+    --surface: #19221F;
+    --surface-2: #212B27;
+    --text: #ECEAE2;
+    --muted: #8FA099;
+    --line: #2B3733;
+    --accent: #E0A458;
+    --accent-ink: #1A140A;
+    --success: #5FB8A0;
+    --danger: #E07A66;
+    --wave-track: #263330;
+    --new: #7FB2EA;
+    --learn: #E98F7C;
+    --review: #5FB8A0;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11181A;
+  --surface: #19221F;
+  --surface-2: #212B27;
+  --text: #ECEAE2;
+  --muted: #8FA099;
+  --line: #2B3733;
+  --accent: #E0A458;
+  --accent-ink: #1A140A;
+  --success: #5FB8A0;
+  --danger: #E07A66;
+  --wave-track: #263330;
+  --new: #7FB2EA;
+  --learn: #E98F7C;
+  --review: #5FB8A0;
+}
+
+/* ---- Top navigation (used by every page) ---- */
+.app-nav {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--line);
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.app-nav .nav-inner {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: 52px;
+}
+.app-nav .brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text);
+  text-decoration: none;
+  flex-shrink: 0;
+}
+.app-nav .brand img { width: 22px; height: 22px; border-radius: 6px; }
+.app-nav .tabs {
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  flex: 1;
+  min-width: 0;
+}
+.app-nav .tabs::-webkit-scrollbar { display: none; }
+.app-nav .tabs a {
+  padding: 7px 12px;
+  border-radius: 8px;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.86rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.app-nav .tabs a:hover { color: var(--text); background: var(--surface-2); }
+.app-nav .tabs a[aria-current="page"] { color: var(--accent); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+@media (max-width: 520px) {
+  .app-nav .brand span { display: none; }
+  .app-nav .tabs a { padding: 7px 9px; }
+}
+
+/* ---- Page basics for the new pages ---- */
+html { height: 100%; }
+* { box-sizing: border-box; }
+body.hub {
+  margin: 0;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Sora', system-ui, -apple-system, "Segoe UI", sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.hub .wrap { max-width: 880px; margin: 0 auto; padding: 24px 16px 64px; }
+.hub a { color: var(--accent); }
+.hub [hidden] { display: none !important; }
+.page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+.page-head h1 { font-size: 1.5rem; font-weight: 700; margin: 0 0 4px; letter-spacing: -0.01em; }
+.page-head p { margin: 0; color: var(--muted); font-size: 0.92rem; }
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 18px 20px;
+  margin-bottom: 16px;
+}
+.card > h2, .section-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+  margin: 0 0 12px;
+}
+.mono { font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.small { font-size: 0.8rem; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+}
+.btn:hover { border-color: var(--accent); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.btn.primary:hover { filter: brightness(1.05); }
+.btn.success { background: var(--success); border-color: var(--success); color: #fff; }
+.btn.danger[data-armed="1"] { background: var(--danger); border-color: var(--danger); color: #fff; }
+.btn.small { padding: 5px 10px; font-size: 0.78rem; border-radius: 7px; }
+.hub button:focus-visible, .hub a:focus-visible, .hub input:focus-visible, .hub select:focus-visible, .hub textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.theme-btn {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  border-radius: 8px;
+  padding: 7px 11px;
+  font-size: 0.78rem;
+  font-family: inherit;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.theme-btn:hover { color: var(--text); border-color: var(--accent); }
+
+.field { margin-bottom: 12px; }
+.field label { display: block; font-size: 0.78rem; color: var(--muted); margin-bottom: 5px; }
+.input, .hub textarea, .hub select {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 11px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.92rem;
+}
+.hub textarea { resize: vertical; min-height: 54px; line-height: 1.5; }
+.row { display: flex; gap: 12px; flex-wrap: wrap; }
+.row > * { flex: 1; min-width: 160px; }
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  background: var(--text);
+  color: var(--bg);
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  z-index: 50;
+  max-width: calc(100% - 32px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+.empty { color: var(--muted); font-size: 0.88rem; padding: 18px 0; text-align: center; }

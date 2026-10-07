@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Practice · English Hub</title>
+<link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/icons/icon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="theme-color" content="#B4722E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/app.css">
+<style>
+  .tick-card { display: flex; flex-direction: column; gap: 12px; }
+  .tick-card[data-done="1"] { border-color: var(--success); box-shadow: inset 0 0 0 1px var(--success); }
+  .tick-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .tick-state { font-weight: 600; }
+  .streak-inline { color: var(--muted); font-size: 0.85rem; }
+  .coming { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  @media (max-width: 620px) { .coming { grid-template-columns: 1fr; } }
+  .mode { border: 1px dashed var(--line); border-radius: 12px; padding: 14px 16px; }
+  .mode h3 { margin: 0 0 4px; font-size: 0.92rem; }
+  .mode p { margin: 0; font-size: 0.82rem; color: var(--muted); }
+  .badge { display: inline-block; font-size: 0.68rem; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: var(--surface-2); color: var(--muted); margin-left: 6px; vertical-align: 2px; }
+  .hist-item { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 0.86rem; }
+  .hist-item:last-child { border-bottom: none; }
+  .hist-item .d { width: 70px; flex-shrink: 0; color: var(--muted); font-size: 0.74rem; padding-top: 2px; }
+  .hist-item .n { white-space: pre-wrap; }
+</style>
+</head>
+<body class="hub">
+<nav id="appNav"></nav>
+<div class="wrap">
+
+  <header class="page-head">
+    <div>
+      <h1>Sentence practice</h1>
+      <p>Practise writing and saying English sentences with an AI tutor (Claude, Gemini…).</p>
+    </div>
+    <button class="theme-btn" id="themeToggle" type="button">Dark</button>
+  </header>
+
+  <section class="card tick-card" id="tickCard">
+    <h2 style="margin:0">Today</h2>
+    <div class="tick-row">
+      <button class="btn success" id="tickBtn" type="button">Mark today's practice done</button>
+      <span class="tick-state" id="tickState"></span>
+      <span class="streak-inline" id="streakInline"></span>
+    </div>
+    <div class="field" style="margin:0">
+      <label for="noteInput">What did you practise? (optional, e.g. "10 sentences with present perfect, IELTS Part 1 about hometown")</label>
+      <textarea id="noteInput" rows="3" placeholder="Sentences you wrote, corrections you got, phrases to remember…"></textarea>
+    </div>
+    <div><button class="btn small" id="saveNoteBtn" type="button" hidden>Save note</button></div>
+  </section>
+
+  <section class="card">
+    <h2>Coming here <span class="badge">placeholder</span></h2>
+    <p class="muted small" style="margin-top:-4px">For now, practise in your AI chat of choice and tick it off above. These modes will live on this page once the AI is connected:</p>
+    <div class="coming">
+      <div class="mode"><h3>Correct my sentence</h3><p>Corrected version, why, and a more natural, band-7 way to say it.</p></div>
+      <div class="mode"><h3>Reflex drill</h3><p>The tutor asks an IELTS Part 1–3 question; answer quickly, get feedback.</p></div>
+      <div class="mode"><h3>Use today's words</h3><p>Build sentences with words from today's Anki reviews.</p></div>
+      <div class="mode"><h3>Mistake log</h3><p>Your recurring errors (articles, tenses, prepositions…) over time.</p></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>History</h2>
+    <div id="history"></div>
+  </section>
+
+</div>
+<script src="/static/app.js"></script>
+<script>
+(function () {
+  "use strict";
+  var practice = {};
+
+  function render() {
+    var t = Hub.todayISO();
+    var isDone = Object.prototype.hasOwnProperty.call(practice, t);
+    document.getElementById("tickCard").setAttribute("data-done", isDone ? "1" : "0");
+    var btn = document.getElementById("tickBtn");
+    btn.textContent = isDone ? "Undo" : "Mark today's practice done";
+    btn.className = isDone ? "btn" : "btn success";
+    document.getElementById("tickState").textContent = isDone ? "✓ Done today" : "";
+    document.getElementById("saveNoteBtn").hidden = !isDone;
+    var note = document.getElementById("noteInput");
+    if (document.activeElement !== note) note.value = isDone ? practice[t] : note.value;
+    var n = Hub.streak(function (iso) { return Object.prototype.hasOwnProperty.call(practice, iso); });
+    document.getElementById("streakInline").textContent = n ? "🔥 " + n + " day streak" : "";
+
+    var list = document.getElementById("history");
+    list.innerHTML = "";
+    var days = Object.keys(practice).sort().reverse();
+    if (!days.length) {
+      list.innerHTML = '<div class="empty">No practice days yet.</div>';
+      return;
+    }
+    days.forEach(function (iso) {
+      var row = document.createElement("div");
+      row.className = "hist-item";
+      var d = document.createElement("div");
+      d.className = "d mono";
+      d.textContent = Hub.dateLabel(iso);
+      var n2 = document.createElement("div");
+      n2.className = "n";
+      n2.textContent = practice[iso] || "Practised";
+      row.appendChild(d);
+      row.appendChild(n2);
+      list.appendChild(row);
+    });
+  }
+
+  function load() {
+    return Hub.api("GET", "/api/summary").then(function (d) { practice = d.practice; render(); });
+  }
+
+  function save(doneFlag) {
+    var note = document.getElementById("noteInput").value.trim();
+    return Hub.api("PUT", "/api/practice/" + Hub.todayISO(), doneFlag ? { done: true, note: note } : { done: false });
+  }
+
+  document.getElementById("tickBtn").addEventListener("click", function () {
+    var btn = this;
+    var isDone = Object.prototype.hasOwnProperty.call(practice, Hub.todayISO());
+    btn.disabled = true;
+    save(!isDone).then(load).then(function () {
+      Hub.toast(isDone ? "Unmarked today." : "Practice logged — nice work!");
+    }).catch(function (e) { Hub.toast("Couldn't save: " + e.message); })
+      .then(function () { btn.disabled = false; });
+  });
+
+  document.getElementById("saveNoteBtn").addEventListener("click", function () {
+    save(true).then(load).then(function () { Hub.toast("Note saved."); })
+      .catch(function (e) { Hub.toast("Couldn't save: " + e.message); });
+  });
+
+  Hub.setupTheme();
+  load().catch(function (e) { Hub.toast("Couldn't reach the server: " + e.message); });
+})();
+</script>
+</body>
+</html>

@@ -1,17 +1,67 @@
 <p align="center">
-  <img src="icons/apple-touch-icon.png" width="96" height="96" alt="Shadowing Tracker icon">
+  <img src="icons/apple-touch-icon.png" width="96" height="96" alt="English Hub icon">
 </p>
 
-# Shadowing Tracker
+# English Hub
 
-A small, self-hosted web app for keeping a **daily English shadowing habit**. Each day
-you log which clip you shadowed, how many times you repeated it, how it felt, and notes
-on the words and rhythm that tripped you up. The app shows your streak and the last two
-weeks at a glance, keeps the full history (with the script and your notes) in one place,
-and can nudge you on Telegram on days you haven't practised yet.
+A small, self-hosted web app that brings **three daily English habits** together in one
+place, with one streak:
 
-It runs on any machine with Python 3 — a Raspberry Pi at home is plenty — and every
-device you open it on (phone, laptop) sees the same history.
+1. **Vocab** — your real **Anki** collection, synced with your AnkiWeb account. Study your
+   decks, add cards and browse notes here, just like on AnkiWeb or Anki desktop; reviews
+   done here, on Anki desktop or on AnkiDroid all end up in the same collection.
+2. **Sentence practice** — practise writing and saying sentences with an AI tutor. For now
+   this is a placeholder with a **"done today"** tick (and an optional note) that counts
+   towards the streak; AI modes come later.
+3. **Shadowing** — the original Shadowing Tracker, unchanged: log the clip, reps, how it
+   felt, and notes/script.
+
+The **Today** page shows what's done today, a streak for each habit, an "all three done"
+streak and the last 14 days at a glance.
+
+> This branch is the new English Hub. The Pi at `english.nvh` still runs the original
+> Shadowing Tracker; the deployment sections further down describe that setup.
+
+## English Hub quick start (this machine)
+
+```sh
+deploy/install-hub.sh          # venv + `anki` package, systemd user service on :8090
+```
+
+Then open <http://localhost:8090>, go to **Vocab** and log in with your AnkiWeb email and
+password (only an AnkiWeb session key is stored, in `~/.config/english-hub/ankiweb.json`,
+mode `0600`). The first sync downloads your collection and media (a few minutes).
+
+If Anki desktop on the same machine is already logged in, you can reuse its login instead:
+
+```sh
+~/.local/share/english-hub/venv/bin/python anki_service.py import-desktop
+```
+
+| Where | What |
+|---|---|
+| `~/.local/share/english-hub/data/shadowing.db` | shadowing sessions and practice ticks |
+| `~/.local/share/english-hub/data/anki/` | the synced Anki collection, media and daily backups |
+| `~/.local/share/english-hub/venv/` | Python venv with the `anki` package |
+| `journalctl --user -u english-hub -f` | logs |
+
+### How the Anki part works
+
+- `anki_service.py` uses the official [`anki`](https://pypi.org/project/anki/) Python
+  package — the same engine as Anki desktop — on its **own** collection in `data/anki/`.
+  It never touches Anki desktop's files.
+- It syncs with AnkiWeb at start-up, every 10 minutes, a minute after your last review,
+  after adding/editing a card, and when you press **Sync now**.
+- **AnkiWeb stays the source of truth.** The app only does normal syncs, or a full
+  *download* when its local copy is empty. It **never uploads** a full collection. If
+  AnkiWeb ever asks for a full sync (copies diverged), the Vocab page shows
+  **Replace with AnkiWeb copy**, which downloads AnkiWeb's version here.
+- Cards are rendered with your note types' templates and CSS inside a sandboxed frame;
+  audio plays automatically (press **R** to replay). Shortcuts: **Space** show answer /
+  Good, **1–4** answer, **Z** undo.
+- New cards go to the **My Words** deck by default (created on first add).
+- Avoid reviewing the *same* deck on two devices at the very same moment; otherwise
+  syncing merges reviews just like it does between Anki desktop and AnkiDroid.
 
 ## What is shadowing, and why track it?
 
@@ -89,10 +139,12 @@ a link, and want a lightweight log rather than a full course platform.
                                             └──────────────────────────────────────┘
 ```
 
-- **Front end** — `index.html` is the whole UI: HTML, CSS and plain JavaScript in one
-  file, no framework and no build step. It talks to the server with `fetch()`.
-- **Back end** — `server.py` is a single Python file using only the standard library
-  (`http.server`, `sqlite3`, `urllib`). Nothing to `pip install`.
+- **Front end** — one HTML file per page (`today.html`, `vocab.html`, `practice.html`,
+  `shadowing.html`) plus shared `static/app.css` and `static/app.js`: plain HTML, CSS and
+  JavaScript, no framework and no build step. Pages talk to the server with `fetch()`.
+- **Back end** — `server.py` uses only the standard library (`http.server`, `sqlite3`,
+  `urllib`). The Anki part, `anki_service.py`, needs the `anki` package; without it the
+  server still runs and reports Vocab as unavailable.
 - **Storage** — one SQLite file, `data/shadowing.db`. Backing up the app means copying
   that file.
 - **Clip titles** — the browser can't read other websites directly (CORS), so it asks
@@ -106,8 +158,14 @@ a link, and want a lightweight log rather than a full course platform.
 
 ```
 .
-├── index.html                    The entire front end (UI, styles, scripts)
+├── today.html                    Today page: three habits, streaks, last 14 days
+├── vocab.html                    Anki: decks, study, add, browse, sync/login
+├── practice.html                 Sentence practice (placeholder + daily tick)
+├── shadowing.html                The original Shadowing Tracker page
+├── static/app.css, app.js        Shared styles, navigation and helpers
 ├── server.py                     Web server, JSON API, SQLite access, title lookup
+├── anki_service.py               Anki collection synced with AnkiWeb (needs `anki`)
+├── requirements.txt              `anki` for the Vocab part
 ├── README.md
 ├── .gitignore                    Ignores data/ and Python caches
 ├── icons/
@@ -116,6 +174,8 @@ a link, and want a lightweight log rather than a full course platform.
 │   ├── apple-touch-icon.png      Phone home-screen icon (180×180)
 │   └── make_icons.py             Draws all three from one definition (pure Python)
 ├── deploy/
+│   ├── install-hub.sh            English Hub as a systemd user service on :8090
+│   ├── english-hub.service       Unit template used by install-hub.sh
 │   ├── install.sh                Installs the systemd service on port 80 (sudo)
 │   ├── shadowing-tracker.service Service template used by install.sh
 │   ├── setup-telegram.py         One-time Telegram bot connection
@@ -130,7 +190,8 @@ Outside the repo, the reminder keeps its credentials in
 
 ### Data model
 
-One table, `sessions`:
+`practice_days(date, note, markedAt)` holds the sentence-practice ticks (one row per
+day). Anki data stays in the Anki collection. Shadowing sessions are in `sessions`:
 
 | Column       | Type    | Meaning                                                        |
 |--------------|---------|----------------------------------------------------------------|
@@ -151,6 +212,18 @@ line breaks) are kept, and every attribute is removed, so notes can't run script
 
 | Method | Path                      | Body / query            | Returns |
 |--------|---------------------------|-------------------------|---------|
+| GET    | `/api/summary`            | —                       | `{shadow, practice, anki}` per-day activity, for streaks |
+| PUT    | `/api/practice/<date>`    | `{done, note}`          | ticks (or unticks) sentence practice for that day |
+| GET    | `/api/anki/state`         | —                       | login, sync and media-sync status |
+| GET    | `/api/anki/decks`         | —                       | deck tree with new/learn/due counts |
+| GET    | `/api/anki/next?deck=<id>`| —                       | next card to study (rendered HTML, audio, button labels) |
+| POST   | `/api/anki/answer`        | `{cardId, rating 1–4, ms}` | answers the card |
+| POST   | `/api/anki/undo`          | —                       | undoes the last action |
+| POST   | `/api/anki/sync`          | `{forceDownload?}`      | syncs with AnkiWeb |
+| POST   | `/api/anki/login`         | `{username, password}`  | logs in to AnkiWeb and syncs |
+| GET/POST | `/api/anki/notes`       | `?q=<search>` / `{notetype, deck, fields, tags}` | search notes / add a note |
+| PUT    | `/api/anki/notes/<id>`    | `{fields, tags}`        | edits a note |
+| GET    | `/anki-media/<file>`      | —                       | a media file from the collection |
 | GET    | `/api/sessions`           | —                       | all sessions, oldest first, with `id` |
 | POST   | `/api/sessions`           | one session (JSON)      | `201 {"ok": true}` |
 | POST   | `/api/sessions/import`    | list of sessions        | `201`; duplicates (same `loggedAt`) are skipped |
@@ -180,19 +253,29 @@ input returns `400 {"error": "…"}`.
 
 ## Run it locally
 
-Needs Python 3.9+.
+Needs Python 3.9+. Without the `anki` package everything except Vocab works:
 
 ```sh
 python3 server.py
 ```
 
-Open <http://localhost:8080>. The database is created on first start.
+With Anki (what `deploy/install-hub.sh` sets up):
+
+```sh
+python3 -m venv ~/.local/share/english-hub/venv
+~/.local/share/english-hub/venv/bin/pip install -r requirements.txt
+~/.local/share/english-hub/venv/bin/python server.py
+```
+
+Open <http://localhost:8090>. The database is created on first start.
 
 | Variable       | Default               | Purpose                         |
 |----------------|-----------------------|---------------------------------|
-| `PORT`         | `8080`                | Port to listen on               |
+| `PORT`         | `8090`                | Port to listen on               |
 | `HOST`         | `0.0.0.0`             | Address to bind                 |
 | `SHADOWING_DB` | `data/shadowing.db`   | Path to the SQLite database     |
+| `ANKI_DIR`     | `data/anki`           | Where the synced Anki collection lives |
+| `ANKI_AUTH`    | `~/.config/english-hub/ankiweb.json` | AnkiWeb session key |
 
 ## Deploy to a server (e.g. a Raspberry Pi)
 

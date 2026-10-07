@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Vocab · English Hub</title>
+<link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/icons/icon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="theme-color" content="#B4722E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/app.css">
+<style>
+  /* Sync bar */
+  .syncbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 16px; }
+  .sync-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+  .syncbar[data-state="ok"] .sync-dot { background: var(--success); }
+  .syncbar[data-state="syncing"] .sync-dot { background: var(--accent); animation: pulse 1s infinite alternate; }
+  .syncbar[data-state="error"] .sync-dot, .syncbar[data-state="conflict"] .sync-dot, .syncbar[data-state="needs-login"] .sync-dot { background: var(--danger); }
+  @keyframes pulse { to { opacity: 0.3; } }
+  .sync-text { flex: 1; min-width: 180px; font-size: 0.84rem; }
+  .sync-text .sub { color: var(--muted); font-size: 0.76rem; }
+  .login-form { display: flex; gap: 8px; flex-wrap: wrap; width: 100%; margin-top: 6px; }
+  .login-form input { flex: 1; min-width: 160px; }
+
+  /* Sub tabs */
+  .subtabs { display: flex; gap: 4px; margin-bottom: 14px; border-bottom: 1px solid var(--line); }
+  .subtabs a { padding: 9px 14px; color: var(--muted); text-decoration: none; font-size: 0.9rem; font-weight: 500; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .subtabs a[aria-current="page"] { color: var(--text); border-bottom-color: var(--accent); }
+
+  /* Decks */
+  .deck-table { width: 100%; border-collapse: collapse; }
+  .deck-table th { text-align: right; font-size: 0.72rem; font-weight: 600; color: var(--muted); padding: 0 8px 8px; }
+  .deck-table th:first-child { text-align: left; padding-left: 0; }
+  .deck-table td { padding: 9px 8px; border-top: 1px solid var(--line); text-align: right; font-size: 0.9rem; }
+  .deck-table td:first-child { text-align: left; padding-left: 0; }
+  .deck-table .deck-link { color: var(--text); text-decoration: none; font-weight: 500; cursor: pointer; background: none; border: none; font: inherit; padding: 0; text-align: left; }
+  .deck-table .deck-link:hover { color: var(--accent); text-decoration: underline; }
+  .c-new { color: var(--new); } .c-learn { color: var(--learn); } .c-review { color: var(--review); }
+  .zero { color: var(--muted); opacity: 0.55; }
+  .today-line { display: flex; gap: 18px; flex-wrap: wrap; font-size: 0.86rem; color: var(--muted); }
+  .today-line b { color: var(--text); }
+
+  /* Study */
+  .study-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+  .study-deck { font-weight: 600; }
+  .counts { font-size: 1rem; display: flex; gap: 12px; }
+  .counts span[data-cur="1"] { text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 2px; }
+  .card-frame-wrap { border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: #fff; }
+  .card-frame { display: block; width: 100%; height: 360px; border: 0; }
+  .answer-bar { position: sticky; bottom: 0; padding: 12px 0 calc(12px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(transparent, var(--bg) 30%); }
+  .answer-bar .show-btn { width: 100%; padding: 13px; font-size: 0.95rem; }
+  .ease-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .ease-btn { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 9px 4px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--text); font-family: inherit; cursor: pointer; }
+  .ease-btn:hover { border-color: var(--accent); }
+  .ease-btn .ivl { font-size: 0.72rem; color: var(--muted); }
+  .ease-btn .nm { font-weight: 600; font-size: 0.9rem; }
+  .ease-btn[data-r="1"] .nm { color: var(--learn); }
+  .ease-btn[data-r="3"] .nm { color: var(--review); }
+  .ease-btn[data-r="4"] .nm { color: var(--new); }
+  .study-tools { display: flex; gap: 8px; justify-content: center; margin-top: 8px; flex-wrap: wrap; }
+  .keys { font-size: 0.72rem; color: var(--muted); text-align: center; margin-top: 6px; }
+  @media (hover: none) { .keys { display: none; } }
+  .congrats { text-align: center; padding: 40px 10px; }
+  .congrats h2 { font-size: 1.2rem; color: var(--text); margin: 0 0 6px; }
+
+  /* Add / Browse */
+  .note-item { padding: 12px 0; border-top: 1px solid var(--line); }
+  .note-item:first-child { border-top: none; }
+  .note-head { display: flex; align-items: baseline; gap: 10px; justify-content: space-between; }
+  .note-word { font-weight: 600; }
+  .note-meta { font-size: 0.74rem; color: var(--muted); }
+  .note-body { font-size: 0.84rem; color: var(--muted); margin-top: 3px; overflow-wrap: anywhere; }
+  .note-edit { margin-top: 10px; }
+  .search-row { display: flex; gap: 8px; margin-bottom: 8px; }
+  .search-row input { flex: 1; }
+  .hint { font-size: 0.74rem; color: var(--muted); margin-bottom: 10px; }
+  .hint code { font-family: 'JetBrains Mono', monospace; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+</style>
+</head>
+<body class="hub">
+<nav id="appNav"></nav>
+<div class="wrap">
+
+  <header class="page-head">
+    <div>
+      <h1>Vocab</h1>
+      <p>Your Anki collection, synced with AnkiWeb — study here, on Anki desktop or on your phone.</p>
+    </div>
+    <button class="theme-btn" id="themeToggle" type="button">Dark</button>
+  </header>
+
+  <section class="card syncbar" id="syncbar" data-state="idle">
+    <span class="sync-dot" aria-hidden="true"></span>
+    <div class="sync-text"><div id="syncMsg">Checking…</div><div class="sub" id="syncSub"></div></div>
+    <button class="btn small" id="syncBtn" type="button">Sync now</button>
+    <button class="btn small danger" id="forceBtn" type="button" hidden>Replace with AnkiWeb copy</button>
+    <form class="login-form" id="loginForm" hidden>
+      <input class="input" type="email" id="loginUser" placeholder="AnkiWeb email" autocomplete="username" required>
+      <input class="input" type="password" id="loginPass" placeholder="AnkiWeb password" autocomplete="current-password" required>
+      <button class="btn primary small" type="submit">Log in</button>
+    </form>
+  </section>
+
+  <nav class="subtabs" aria-label="Vocab sections">
+    <a href="#decks" data-view="decks">Decks</a>
+    <a href="#study" data-view="study">Study</a>
+    <a href="#add" data-view="add">Add</a>
+    <a href="#browse" data-view="browse">Browse</a>
+  </nav>
+
+  <!-- Decks -->
+  <section id="view-decks" hidden>
+    <div class="card">
+      <div class="today-line" id="todayLine"></div>
+    </div>
+    <div class="card">
+      <table class="deck-table">
+        <thead><tr><th>Deck</th><th>New</th><th>Learn</th><th>Due</th></tr></thead>
+        <tbody id="deckRows"><tr><td colspan="4" class="muted">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Study -->
+  <section id="view-study" hidden>
+    <div class="study-top">
+      <div class="study-deck" id="studyDeck"></div>
+      <div class="counts mono" id="studyCounts"></div>
+    </div>
+    <div id="studyArea">
+      <div class="card-frame-wrap"><iframe class="card-frame" id="cardFrame" title="Anki card" sandbox="allow-scripts"></iframe></div>
+      <div class="answer-bar">
+        <button class="btn primary show-btn" id="showBtn" type="button">Show answer</button>
+        <div class="ease-row" id="easeRow" hidden>
+          <button class="ease-btn" data-r="1" type="button"><span class="ivl"></span><span class="nm">Again</span></button>
+          <button class="ease-btn" data-r="2" type="button"><span class="ivl"></span><span class="nm">Hard</span></button>
+          <button class="ease-btn" data-r="3" type="button"><span class="ivl"></span><span class="nm">Good</span></button>
+          <button class="ease-btn" data-r="4" type="button"><span class="ivl"></span><span class="nm">Easy</span></button>
+        </div>
+        <div class="study-tools">
+          <button class="btn small" id="replayBtn" type="button">🔊 Replay</button>
+          <button class="btn small" id="undoBtn" type="button">↶ Undo</button>
+        </div>
+        <div class="keys">Space: show answer / Good · 1–4: answer · R: replay audio · Z: undo</div>
+      </div>
+    </div>
+    <div class="card congrats" id="congrats" hidden>
+      <h2>Congratulations! 🎉</h2>
+      <p class="muted" id="congratsText">You've finished this deck for now.</p>
+      <p><a class="btn" href="#decks">Back to decks</a> <a class="btn" href="#add">Add new words</a></p>
+    </div>
+  </section>
+
+  <!-- Add -->
+  <section id="view-add" hidden>
+    <div class="card">
+      <div class="row">
+        <div class="field"><label for="addType">Note type</label><select id="addType"></select></div>
+        <div class="field"><label for="addDeck">Deck</label><input class="input" id="addDeck" list="deckNames" value="My Words"></div>
+      </div>
+      <datalist id="deckNames"></datalist>
+      <div id="addFields"></div>
+      <div class="field"><label for="addTags">Tags (space separated)</label><input class="input" id="addTags" placeholder="e.g. shadowing ielts"></div>
+      <button class="btn primary" id="addBtn" type="button">Add card</button>
+      <span class="muted small" style="margin-left:8px">Ctrl+Enter</span>
+    </div>
+    <div class="card">
+      <h2>Added recently</h2>
+      <div id="recentList"></div>
+    </div>
+  </section>
+
+  <!-- Browse -->
+  <section id="view-browse" hidden>
+    <div class="card">
+      <form class="search-row" id="searchForm">
+        <input class="input" id="searchInput" placeholder="Search, e.g. insult" autocomplete="off">
+        <button class="btn primary" type="submit">Search</button>
+      </form>
+      <div class="hint">Anki search syntax works: <code>deck:"My Words"</code> <code>added:7</code> <code>rated:1</code> <code>is:due</code> <code>tag:ielts</code></div>
+      <div id="browseInfo" class="muted small"></div>
+      <div id="browseList"></div>
+    </div>
+  </section>
+
+</div>
+<script src="/static/app.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var DECK_KEY = "english-hub-study-deck";
+  var state = null;
+  var decks = [];
+  var noteTypes = [];
+  var current = null;      // card being studied
+  var shownAt = 0;
+  var answerShown = false;
+  var audio = null;
+  var audioQueue = [];
+  var pollTimer = null;
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { var d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+  function plainText(html) {
+    var doc = new DOMParser().parseFromString("<body>" + html.replace(/\[sound:[^\]]*\]/g, "") + "</body>", "text/html");
+    return doc.body.textContent.replace(/\s+/g, " ").trim();
+  }
+  function getStoredDeck() { try { return localStorage.getItem(DECK_KEY); } catch (e) { return null; } }
+  function setStoredDeck(id) { try { localStorage.setItem(DECK_KEY, String(id)); } catch (e) {} }
+
+  // ---- Sync bar -------------------------------------------------------------
+
+  function renderSync() {
+    if (!state) return;
+    var bar = $("syncbar");
+    var s = state.sync || {};
+    bar.setAttribute("data-state", s.state || "idle");
+    var msg = s.message || (s.state === "idle" ? "Not synced yet in this session." : "");
+    if (s.state === "ok" && s.lastSync) msg = "Synced with AnkiWeb at " + new Date(s.lastSync).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    if (!state.loggedIn) msg = "Not logged in to AnkiWeb.";
+    $("syncMsg").textContent = msg;
+    var sub = [];
+    if (state.username) sub.push(state.username);
+    sub.push(state.cards + " cards");
+    if (state.media && state.media.active) sub.push("Media: " + state.media.added);
+    $("syncSub").textContent = sub.join(" · ");
+    $("loginForm").hidden = state.loggedIn && s.state !== "needs-login";
+    $("forceBtn").hidden = s.state !== "conflict";
+    $("syncBtn").disabled = s.state === "syncing" || !state.loggedIn;
+
+    clearTimeout(pollTimer);
+    if (s.state === "syncing" || (state.media && state.media.active)) pollTimer = setTimeout(loadState, 3000);
+  }
+
+  function loadState() {
+    return Hub.api("GET", "/api/anki/state").then(function (st) {
+      var wasSyncing = state && state.sync && state.sync.state === "syncing";
+      state = st;
+      renderSync();
+      if (wasSyncing && st.sync.state !== "syncing") refreshView();
+    }).catch(function (e) {
+      $("syncbar").setAttribute("data-state", "error");
+      $("syncMsg").textContent = e.status === 503 ? e.message : "Couldn't reach the server: " + e.message;
+    });
+  }
+
+  function runSync(force) {
+    $("syncbar").setAttribute("data-state", "syncing");
+    $("syncMsg").textContent = force ? "Downloading your collection from AnkiWeb…" : "Syncing with AnkiWeb…";
+    $("syncBtn").disabled = true;
+    return Hub.api("POST", "/api/anki/sync", force ? { forceDownload: true } : {}).then(function () {
+      return loadState();
+    }).then(refreshView).catch(function (e) { Hub.toast(e.message); loadState(); });
+  }
+
+  $("syncBtn").addEventListener("click", function () { runSync(false); });
+  Hub.armed($("forceBtn"), "Sure? Local unsynced changes are lost", function () { runSync(true); });
+  $("loginForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    $("syncMsg").textContent = "Logging in…";
+    Hub.api("POST", "/api/anki/login", { username: $("loginUser").value, password: $("loginPass").value })
+      .then(function () { $("loginPass").value = ""; return loadState(); })
+      .then(refreshView)
+      .catch(function (err) { Hub.toast(err.message, 5000); loadState(); });
+  });
+
+  // ---- Views ----------------------------------------------------------------
+
+  function currentView() {
+    var v = (location.hash || "#decks").slice(1).split("?")[0];
+    return ["decks", "study", "add", "browse"].indexOf(v) >= 0 ? v : "decks";
+  }
+
+  function showView() {
+    var v = currentView();
+    ["decks", "study", "add", "browse"].forEach(function (name) {
+      $("view-" + name).hidden = name !== v;
+    });
+    document.querySelectorAll(".subtabs a").forEach(function (a) {
+      if (a.getAttribute("data-view") === v) a.setAttribute("aria-current", "page");
+      else a.removeAttribute("aria-current");
+    });
+    if (v !== "study") stopAudio();
+    refreshView();
+  }
+
+  function refreshView() {
+    var v = currentView();
+    if (v === "decks") return loadDecks();
+    if (v === "study") return loadNext();
+    if (v === "add") return loadAdd();
+    if (v === "browse") return doSearch();
+  }
+
+  // ---- Decks ----------------------------------------------------------------
+
+  function countCell(n, cls) {
+    return '<td class="mono ' + (n ? cls : "zero") + '">' + n + "</td>";
+  }
+
+  function loadDecks() {
+    return Promise.all([Hub.api("GET", "/api/anki/decks"), Hub.api("GET", "/api/summary")]).then(function (res) {
+      decks = res[0];
+      var reviewsToday = res[1].anki[Hub.todayISO()] || 0;
+      var tot = { new: 0, learn: 0, review: 0 };
+      decks.filter(function (d) { return d.depth === 0; }).forEach(function (d) {
+        tot.new += d.new; tot.learn += d.learn; tot.review += d.review;
+      });
+      $("todayLine").innerHTML =
+        "<span>Studied today: <b class='mono'>" + reviewsToday + "</b> cards</span>" +
+        "<span>Still due: <b class='mono c-new'>" + tot.new + "</b> new · <b class='mono c-learn'>" + tot.learn +
+        "</b> learning · <b class='mono c-review'>" + tot.review + "</b> review</span>";
+
+      var body = $("deckRows");
+      body.innerHTML = "";
+      if (!decks.length) {
+        body.innerHTML = '<tr><td colspan="4" class="muted">No decks yet — sync with AnkiWeb first.</td></tr>';
+        return;
+      }
+      decks.forEach(function (d) {
+        var tr = document.createElement("tr");
+        tr.innerHTML =
+          '<td style="padding-left:' + (d.depth * 20) + 'px"><button class="deck-link" type="button">' + esc(d.name) + "</button>" +
+          ' <span class="muted small">' + d.total + "</span></td>" +
+          countCell(d.new, "c-new") + countCell(d.learn, "c-learn") + countCell(d.review, "c-review");
+        tr.querySelector(".deck-link").addEventListener("click", function () {
+          setStoredDeck(d.id);
+          location.hash = "#study";
+        });
+        body.appendChild(tr);
+      });
+      fillDeckDatalist();
+    }).catch(function (e) {
+      $("deckRows").innerHTML = '<tr><td colspan="4" class="muted">' + esc(e.message) + "</td></tr>";
+    });
+  }
+
+  function fillDeckDatalist() {
+    var dl = $("deckNames");
+    dl.innerHTML = "";
+    decks.forEach(function (d) {
+      var o = document.createElement("option");
+      o.value = d.fullName;
+      dl.appendChild(o);
+    });
+  }
+
+  // ---- Study ----------------------------------------------------------------
+
+  function isDark() {
+    var t = document.documentElement.getAttribute("data-theme");
+    return t ? t === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+  }
+
+  function cardDoc(html, ord) {
+    return '<!doctype html><html><head><meta charset="utf-8">' +
+      '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+      '<base href="' + location.origin + '/anki-media/">' +
+      "<style>html,body{margin:0}body{padding:16px;overflow-wrap:break-word;box-sizing:border-box}" +
+      ".replay-button{display:inline-block;vertical-align:middle;margin:4px}img{max-width:100%;height:auto}</style>" +
+      '</head><body class="card card' + (ord + 1) + (isDark() ? " nightMode night_mode" : "") + '">' + html +
+      "<script>(function(){function h(){parent.postMessage({ankiHeight:document.body.scrollHeight},'*')}" +
+      "if(window.ResizeObserver)new ResizeObserver(h).observe(document.body);addEventListener('load',h);h();" +
+      "document.addEventListener('keydown',function(e){if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;" +
+      "parent.postMessage({ankiKey:e.key,mod:e.ctrlKey||e.metaKey||e.altKey},'*');if(e.key===' ')e.preventDefault();});})();<\/script>" +
+      "</body></html>";
+  }
+
+  window.addEventListener("message", function (e) {
+    if (e.source !== $("cardFrame").contentWindow || !e.data) return;
+    if (e.data.ankiHeight) $("cardFrame").style.height = Math.max(240, Math.min(e.data.ankiHeight + 4, 4000)) + "px";
+    if (e.data.ankiPlay) playTag(e.data.ankiPlay);
+    if (e.data.ankiKey && !e.data.mod) handleKey(e.data.ankiKey);
+  });
+
+  function stopAudio() {
+    audioQueue = [];
+    if (audio) { audio.pause(); audio = null; }
+    if (window.speechSynthesis) speechSynthesis.cancel();
+  }
+
+  function playItem(item, then) {
+    if (!item || item.type === "none") return then && then();
+    if (item.type === "tts") {
+      if (!window.speechSynthesis) return then && then();
+      var u = new SpeechSynthesisUtterance(item.text);
+      if (item.lang) u.lang = item.lang.replace("_", "-");
+      u.onend = function () { then && then(); };
+      speechSynthesis.speak(u);
+      return;
+    }
+    audio = new Audio("/anki-media/" + encodeURIComponent(item.file));
+    audio.onended = function () { then && then(); };
+    audio.onerror = function () { then && then(); };
+    audio.play().catch(function () { /* autoplay blocked until the first click; the replay button still works */ });
+  }
+
+  function playAll(list) {
+    stopAudio();
+    audioQueue = list.slice();
+    (function next() {
+      var item = audioQueue.shift();
+      if (item) playItem(item, next);
+    })();
+  }
+
+  function playTag(tag) {
+    if (!current) return;
+    var parts = tag.split(":");
+    var list = parts[0] === "q" ? current.avQuestion : current.avAnswer;
+    stopAudio();
+    playItem(list[Number(parts[1])]);
+  }
+
+  function renderCounts(c, queue) {
+    $("studyCounts").innerHTML =
+      '<span class="c-new" data-cur="' + (queue === "new" ? 1 : 0) + '">' + c.new + "</span>" +
+      '<span class="c-learn" data-cur="' + (queue === "learn" ? 1 : 0) + '">' + c.learn + "</span>" +
+      '<span class="c-review" data-cur="' + (queue === "review" ? 1 : 0) + '">' + c.review + "</span>";
+  }
+
+  function loadNext() {
+    var deck = getStoredDeck();
+    return Hub.api("GET", "/api/anki/next" + (deck ? "?deck=" + encodeURIComponent(deck) : "")).then(function (n) {
+      $("studyDeck").textContent = n.deckName.replace(/::/g, " › ");
+      renderCounts(n.counts, n.queue);
+      stopAudio();
+      if (n.done) {
+        current = null;
+        $("studyArea").hidden = true;
+        $("congrats").hidden = false;
+        $("congratsText").textContent = "You've finished " + n.deckName.replace(/::/g, " › ") + " for now. New reviews will show up when they're due.";
+        return;
+      }
+      $("studyArea").hidden = false;
+      $("congrats").hidden = true;
+      current = n;
+      answerShown = false;
+      shownAt = Date.now();
+      $("cardFrame").srcdoc = cardDoc(n.question, n.ord);
+      $("showBtn").hidden = false;
+      $("easeRow").hidden = true;
+      $("showBtn").focus({ preventScroll: true });
+      playAll(n.avQuestion);
+    }).catch(function (e) {
+      if (e.status === 400 || /deck/i.test(e.message)) { try { localStorage.removeItem(DECK_KEY); } catch (x) {} }
+      $("studyDeck").textContent = "";
+      $("studyArea").hidden = true;
+      $("congrats").hidden = false;
+      $("congratsText").textContent = e.message;
+    });
+  }
+
+  function showAnswer() {
+    if (!current || answerShown) return;
+    answerShown = true;
+    $("cardFrame").srcdoc = cardDoc(current.answer, current.ord);
+    $("showBtn").hidden = true;
+    var row = $("easeRow");
+    row.hidden = false;
+    row.querySelectorAll(".ease-btn").forEach(function (b) {
+      b.querySelector(".ivl").textContent = current.buttons[Number(b.getAttribute("data-r")) - 1] || "";
+    });
+    row.querySelector('[data-r="3"]').focus({ preventScroll: true });
+    playAll(current.avAnswer);
+  }
+
+  var answering = false;
+  function answer(rating) {
+    if (!current || !answerShown || answering) return;
+    answering = true;
+    Hub.api("POST", "/api/anki/answer", { cardId: current.cardId, rating: rating, ms: Date.now() - shownAt })
+      .catch(function (e) { Hub.toast(e.message); })
+      .then(function () { answering = false; return loadNext(); });
+  }
+
+  function undo() {
+    Hub.api("POST", "/api/anki/undo").then(function (r) {
+      Hub.toast("Undid: " + r.undone);
+      return loadNext();
+    }).catch(function (e) { Hub.toast(e.message); });
+  }
+
+  function handleKey(key) {
+    if (currentView() !== "study") return;
+    if (key === " " || key === "Enter") { if (!answerShown) showAnswer(); else answer(3); }
+    else if (/^[1-4]$/.test(key)) answer(Number(key));
+    else if (key === "r" || key === "R") playAll(answerShown ? current.avAnswer : current.avQuestion);
+    else if (key === "z" || key === "Z") undo();
+  }
+
+  $("showBtn").addEventListener("click", showAnswer);
+  document.querySelectorAll(".ease-btn").forEach(function (b) {
+    b.addEventListener("click", function () { answer(Number(b.getAttribute("data-r"))); });
+  });
+  $("replayBtn").addEventListener("click", function () {
+    if (current) playAll(answerShown ? current.avAnswer : current.avQuestion);
+  });
+  $("undoBtn").addEventListener("click", undo);
+  document.addEventListener("keydown", function (e) {
+    var tag = (e.target.tagName || "").toUpperCase();
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (currentView() !== "study") return;
+    if (e.key === " " || e.key === "Enter" || /^[1-4rRzZ]$/.test(e.key)) {
+      e.preventDefault();
+      handleKey(e.key);
+    }
+  });
+
+  // ---- Add ------------------------------------------------------------------
+
+  function loadAdd() {
+    var p1 = noteTypes.length ? Promise.resolve(noteTypes) : Hub.api("GET", "/api/anki/notetypes");
+    var p2 = decks.length ? Promise.resolve(decks) : Hub.api("GET", "/api/anki/decks");
+    return Promise.all([p1, p2]).then(function (res) {
+      if (!noteTypes.length) {
+        noteTypes = res[0];
+        var sel = $("addType");
+        sel.innerHTML = "";
+        noteTypes.forEach(function (m) {
+          var o = document.createElement("option");
+          o.value = m.name;
+          o.textContent = m.name;
+          sel.appendChild(o);
+        });
+        sel.value = noteTypes.some(function (m) { return m.name === "Basic"; }) ? "Basic" : noteTypes[0].name;
+        renderAddFields();
+      }
+      decks = res[1];
+      fillDeckDatalist();
+      return loadRecent();
+    }).catch(function (e) { Hub.toast(e.message); });
+  }
+
+  function renderAddFields() {
+    var model = noteTypes.filter(function (m) { return m.name === $("addType").value; })[0];
+    var box = $("addFields");
+    box.innerHTML = "";
+    (model ? model.fields : []).forEach(function (name, i) {
+      var f = document.createElement("div");
+      f.className = "field";
+      f.innerHTML = '<label for="fld' + i + '">' + esc(name) + '</label><textarea id="fld' + i + '" rows="' + (i === 0 ? 1 : 2) + '"></textarea>';
+      f.querySelector("textarea").setAttribute("data-name", name);
+      box.appendChild(f);
+    });
+  }
+
+  function addCard() {
+    var fields = {};
+    $("addFields").querySelectorAll("textarea").forEach(function (t) {
+      fields[t.getAttribute("data-name")] = t.value.trim().replace(/\n/g, "<br>");
+    });
+    var btn = $("addBtn");
+    btn.disabled = true;
+    Hub.api("POST", "/api/anki/notes", {
+      notetype: $("addType").value,
+      deck: $("addDeck").value.trim() || "My Words",
+      fields: fields,
+      tags: $("addTags").value.split(/\s+/)
+    }).then(function () {
+      Hub.toast("Added. It will reach Anki desktop and your phone after the next sync.");
+      $("addFields").querySelectorAll("textarea").forEach(function (t) { t.value = ""; });
+      var first = $("addFields").querySelector("textarea");
+      if (first) first.focus();
+      return loadRecent();
+    }).catch(function (e) { Hub.toast(e.message, 4000); })
+      .then(function () { btn.disabled = false; });
+  }
+
+  function loadRecent() {
+    return Hub.api("GET", "/api/anki/notes?q=" + encodeURIComponent("added:3")).then(function (r) {
+      renderNotes($("recentList"), r.notes, "Nothing added in the last 3 days.");
+    });
+  }
+
+  $("addType").addEventListener("change", renderAddFields);
+  $("addBtn").addEventListener("click", addCard);
+  $("view-add").addEventListener("keydown", function (e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); addCard(); }
+  });
+
+  // ---- Browse ---------------------------------------------------------------
+
+  function renderNotes(container, notes, emptyText) {
+    container.innerHTML = "";
+    if (!notes.length) {
+      container.innerHTML = '<div class="empty">' + esc(emptyText) + "</div>";
+      return;
+    }
+    notes.forEach(function (n) { container.appendChild(noteItem(n)); });
+  }
+
+  function noteItem(n) {
+    var names = Object.keys(n.fields);
+    var item = document.createElement("div");
+    item.className = "note-item";
+    var rest = names.slice(1).map(function (k) { return plainText(n.fields[k]); }).filter(Boolean).join(" · ");
+    item.innerHTML =
+      '<div class="note-head"><span class="note-word"></span><span class="note-meta"></span></div>' +
+      '<div class="note-body"></div>' +
+      '<div style="margin-top:6px"><button class="btn small edit-btn" type="button">Edit</button></div>';
+    item.querySelector(".note-word").textContent = plainText(n.fields[names[0]]) || "(empty)";
+    item.querySelector(".note-meta").textContent = [n.deck.replace(/::/g, " › "), n.notetype, n.due].concat(n.tags.length ? ["#" + n.tags.join(" #")] : []).join(" · ");
+    item.querySelector(".note-body").textContent = rest.length > 260 ? rest.slice(0, 260) + "…" : rest;
+    item.querySelector(".edit-btn").addEventListener("click", function () { openEditor(item, n); });
+    return item;
+  }
+
+  function openEditor(item, n) {
+    if (item.querySelector(".note-edit")) return;
+    var box = document.createElement("div");
+    box.className = "note-edit";
+    Object.keys(n.fields).forEach(function (name) {
+      var f = document.createElement("div");
+      f.className = "field";
+      f.innerHTML = "<label></label><textarea rows='2'></textarea>";
+      f.querySelector("label").textContent = name;
+      var t = f.querySelector("textarea");
+      t.value = n.fields[name];
+      t.setAttribute("data-name", name);
+      box.appendChild(f);
+    });
+    var tf = document.createElement("div");
+    tf.className = "field";
+    tf.innerHTML = "<label>Tags</label><input class='input'>";
+    tf.querySelector("input").value = n.tags.join(" ");
+    box.appendChild(tf);
+    var actions = document.createElement("div");
+    actions.innerHTML = '<button class="btn primary small" type="button">Save</button> <button class="btn small" type="button">Cancel</button>';
+    box.appendChild(actions);
+    var btns = actions.querySelectorAll("button");
+    btns[0].addEventListener("click", function () {
+      var fields = {};
+      box.querySelectorAll("textarea").forEach(function (t) { fields[t.getAttribute("data-name")] = t.value; });
+      btns[0].disabled = true;
+      Hub.api("PUT", "/api/anki/notes/" + n.id, { fields: fields, tags: tf.querySelector("input").value.split(/\s+/) })
+        .then(function () {
+          Hub.toast("Saved.");
+          n.fields = fields;
+          n.tags = tf.querySelector("input").value.split(/\s+/).filter(Boolean);
+          item.replaceWith(noteItem(n));
+        })
+        .catch(function (e) { Hub.toast(e.message); btns[0].disabled = false; });
+    });
+    btns[1].addEventListener("click", function () { box.remove(); });
+    item.appendChild(box);
+  }
+
+  function doSearch() {
+    var q = $("searchInput").value.trim();
+    $("browseInfo").textContent = "Searching…";
+    return Hub.api("GET", "/api/anki/notes?q=" + encodeURIComponent(q)).then(function (r) {
+      $("browseInfo").textContent = q
+        ? r.notes.length + (r.total > r.notes.length ? " of " + r.total : "") + " notes"
+        : "Notes added in the last 7 days:";
+      renderNotes($("browseList"), r.notes, "No matching notes.");
+    }).catch(function (e) { $("browseInfo").textContent = e.message; });
+  }
+
+  $("searchForm").addEventListener("submit", function (e) { e.preventDefault(); doSearch(); });
+
+  // ---- Start ----------------------------------------------------------------
+
+  Hub.setupTheme();
+  window.addEventListener("hashchange", showView);
+  loadState().then(showView);
+  setInterval(function () { if (document.visibilityState === "visible") loadState(); }, 60000);
+})();
+</script>
+</body>
+</html>

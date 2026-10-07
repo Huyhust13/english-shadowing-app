@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>English Hub</title>
+<link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/icons/icon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="English Hub">
+<meta name="theme-color" content="#B4722E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/app.css">
+<style>
+  .streak-card { display: flex; align-items: center; gap: 22px; }
+  .streak-big { font-size: 2.8rem; font-weight: 700; color: var(--accent); line-height: 1; min-width: 2.2ch; text-align: right; }
+  .streak-copy .label { font-weight: 600; }
+  .streak-copy .sub { font-size: 0.84rem; color: var(--muted); margin-top: 3px; }
+
+  .activities { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 16px; }
+  @media (max-width: 720px) { .activities { grid-template-columns: 1fr; } }
+  .act { margin-bottom: 0; display: flex; flex-direction: column; gap: 10px; position: relative; }
+  .act[data-done="1"] { border-color: var(--success); box-shadow: inset 0 0 0 1px var(--success); }
+  .act-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .act-name { font-weight: 600; font-size: 1rem; }
+  .act-step { font-size: 0.72rem; color: var(--muted); }
+  .check {
+    width: 28px; height: 28px; border-radius: 50%;
+    border: 2px solid var(--line); display: grid; place-items: center; flex-shrink: 0;
+    color: transparent; font-size: 0.9rem; font-weight: 700;
+  }
+  .act[data-done="1"] .check { background: var(--success); border-color: var(--success); color: #fff; }
+  .act-stat { font-size: 1.6rem; font-weight: 700; line-height: 1.1; }
+  .act-stat small { font-size: 0.8rem; font-weight: 500; color: var(--muted); margin-left: 4px; }
+  .act-detail { font-size: 0.82rem; color: var(--muted); min-height: 2.6em; }
+  .act-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; }
+  .act-streak { font-size: 0.78rem; color: var(--muted); }
+
+  .grid14 { display: grid; grid-template-columns: 76px repeat(14, minmax(0, 1fr)); gap: 5px 4px; align-items: center; justify-items: center; }
+  .grid14 .rlabel { font-size: 0.76rem; color: var(--muted); justify-self: start; }
+  .grid14 .dot { width: 100%; max-width: 26px; aspect-ratio: 1; border-radius: 5px; background: var(--wave-track); }
+  @media (max-width: 520px) { .grid14 { grid-template-columns: 70px repeat(14, minmax(0, 1fr)); gap: 4px 3px; } .grid14 .rlabel { font-size: 0.7rem; } .grid14 .dot { border-radius: 3px; } }
+  .grid14 .dot[data-on="1"] { background: var(--success); }
+  .grid14 .dot[data-today="1"] { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .grid14 .dot.full[data-on="1"] { background: var(--accent); }
+  .grid14 .clabel { font-size: 0.62rem; color: var(--muted); text-align: center; white-space: nowrap; overflow: visible; width: 0; display: flex; justify-content: center; }
+  .note-line { font-size: 0.78rem; color: var(--muted); margin-top: 12px; }
+</style>
+</head>
+<body class="hub">
+<nav id="appNav"></nav>
+<div class="wrap">
+
+  <header class="page-head">
+    <div>
+      <h1 id="greeting">Today</h1>
+      <p id="todayDate"></p>
+    </div>
+    <button class="theme-btn" id="themeToggle" type="button">Dark</button>
+  </header>
+
+  <section class="card streak-card">
+    <div class="streak-big mono" id="fullStreak">0</div>
+    <div class="streak-copy">
+      <div class="label">day streak, all three done</div>
+      <div class="sub" id="fullStreakSub">Vocab, practice and shadowing on the same day.</div>
+    </div>
+  </section>
+
+  <section class="activities">
+    <article class="card act" id="actVocab">
+      <div class="act-head">
+        <div><div class="act-step">1 · Vocab</div><div class="act-name">Anki reviews</div></div>
+        <div class="check" aria-hidden="true">✓</div>
+      </div>
+      <div class="act-stat mono" id="vocabStat">–</div>
+      <div class="act-detail" id="vocabDetail">Loading…</div>
+      <div class="act-foot">
+        <span class="act-streak" id="vocabStreak"></span>
+        <a class="btn primary small" href="/vocab#study">Study</a>
+      </div>
+    </article>
+
+    <article class="card act" id="actPractice">
+      <div class="act-head">
+        <div><div class="act-step">2 · Practice</div><div class="act-name">Sentences</div></div>
+        <div class="check" aria-hidden="true">✓</div>
+      </div>
+      <div class="act-stat mono" id="practiceStat">–</div>
+      <div class="act-detail" id="practiceDetail">Write or say sentences with an AI tutor, then tick it off.</div>
+      <div class="act-foot">
+        <span class="act-streak" id="practiceStreak"></span>
+        <button class="btn small" id="practiceToggle" type="button">Mark done</button>
+      </div>
+    </article>
+
+    <article class="card act" id="actShadow">
+      <div class="act-head">
+        <div><div class="act-step">3 · Shadowing</div><div class="act-name">Shadow a clip</div></div>
+        <div class="check" aria-hidden="true">✓</div>
+      </div>
+      <div class="act-stat mono" id="shadowStat">–</div>
+      <div class="act-detail" id="shadowDetail"></div>
+      <div class="act-foot">
+        <span class="act-streak" id="shadowStreak"></span>
+        <a class="btn primary small" href="/shadowing">Log session</a>
+      </div>
+    </article>
+  </section>
+
+  <section class="card">
+    <h2>Last 14 days</h2>
+    <div class="grid14" id="grid14"></div>
+    <div class="note-line" id="gridNote"></div>
+  </section>
+
+</div>
+<script src="/static/app.js"></script>
+<script>
+(function () {
+  "use strict";
+  var data = null;
+  var due = null;
+
+  function plural(n, word) { return n + " " + word + (n === 1 ? "" : "s"); }
+
+  function done(kind, iso) {
+    if (!data) return false;
+    if (kind === "vocab") return (data.anki[iso] || 0) > 0;
+    if (kind === "practice") return Object.prototype.hasOwnProperty.call(data.practice, iso);
+    if (kind === "shadow") return (data.shadow[iso] || 0) > 0;
+    return done("vocab", iso) && done("practice", iso) && done("shadow", iso);
+  }
+
+  function streakText(kind) {
+    var n = Hub.streak(function (iso) { return done(kind, iso); });
+    return n ? "🔥 " + plural(n, "day") : "No streak yet";
+  }
+
+  function render() {
+    var t = Hub.todayISO();
+    document.getElementById("todayDate").textContent = Hub.dateLabel(t, { weekday: "long", month: "long", day: "numeric" });
+    var h = new Date().getHours();
+    document.getElementById("greeting").textContent = h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+
+    // Full-day streak
+    var full = Hub.streak(function (iso) { return done("full", iso); });
+    document.getElementById("fullStreak").textContent = String(full);
+    var left = ["vocab", "practice", "shadow"].filter(function (k) { return !done(k, t); });
+    var names = { vocab: "vocab", practice: "practice", shadow: "shadowing" };
+    document.getElementById("fullStreakSub").textContent = left.length === 0
+      ? "All three done today. See you tomorrow!"
+      : "Still to do today: " + left.map(function (k) { return names[k]; }).join(", ") + ".";
+
+    // Vocab
+    var reviews = data.anki[t] || 0;
+    document.getElementById("actVocab").setAttribute("data-done", reviews > 0 ? "1" : "0");
+    document.getElementById("vocabStat").innerHTML = reviews + "<small>reviewed today</small>";
+    var vd = document.getElementById("vocabDetail");
+    if (!data.ankiAvailable) vd.textContent = "Anki isn't available: " + (data.ankiError || "not set up");
+    else if (due === null) vd.textContent = "Checking what's due…";
+    else vd.textContent = due.total === 0
+      ? "Nothing due right now. " + (due.synced ? "Synced " + due.synced + "." : "")
+      : plural(due.review, "review") + ", " + due.learn + " learning, " + due.new + " new still due.";
+    document.getElementById("vocabStreak").textContent = streakText("vocab");
+
+    // Practice
+    var practiced = done("practice", t);
+    document.getElementById("actPractice").setAttribute("data-done", practiced ? "1" : "0");
+    document.getElementById("practiceStat").innerHTML = practiced ? "Done<small>today</small>" : "Not yet<small>today</small>";
+    var note = data.practice[t];
+    document.getElementById("practiceDetail").textContent = practiced && note ? note : "Write or say sentences with an AI tutor, then tick it off.";
+    var pt = document.getElementById("practiceToggle");
+    pt.textContent = practiced ? "Undo" : "Mark done";
+    pt.className = practiced ? "btn small" : "btn success small";
+    document.getElementById("practiceStreak").textContent = streakText("practice");
+
+    // Shadowing
+    var reps = data.shadow[t] || 0;
+    document.getElementById("actShadow").setAttribute("data-done", reps > 0 ? "1" : "0");
+    document.getElementById("shadowStat").innerHTML = reps + "<small>reps today</small>";
+    document.getElementById("shadowDetail").textContent = reps > 0 ? "Nice — logged today." : "Pick a short clip and repeat it out loud.";
+    document.getElementById("shadowStreak").textContent = streakText("shadow");
+
+    renderGrid();
+  }
+
+  function renderGrid() {
+    var grid = document.getElementById("grid14");
+    grid.innerHTML = "";
+    var rows = [["vocab", "Vocab"], ["practice", "Practice"], ["shadow", "Shadowing"], ["full", "All three"]];
+    rows.forEach(function (r) {
+      var lbl = document.createElement("div");
+      lbl.className = "rlabel";
+      lbl.textContent = r[1];
+      grid.appendChild(lbl);
+      for (var i = 13; i >= 0; i--) {
+        var iso = Hub.daysAgoISO(i);
+        var dot = document.createElement("div");
+        dot.className = "dot" + (r[0] === "full" ? " full" : "");
+        var on = done(r[0], iso);
+        if (on) dot.setAttribute("data-on", "1");
+        if (i === 0) dot.setAttribute("data-today", "1");
+        var extra = "";
+        if (r[0] === "vocab" && data.anki[iso]) extra = " (" + plural(data.anki[iso], "review") + ")";
+        if (r[0] === "shadow" && data.shadow[iso]) extra = " (" + plural(data.shadow[iso], "rep") + ")";
+        dot.title = Hub.dateLabel(iso) + " · " + r[1] + ": " + (on ? "done" + extra : "not done");
+        grid.appendChild(dot);
+      }
+    });
+    grid.appendChild(document.createElement("div"));
+    for (var j = 13; j >= 0; j--) {
+      var c = document.createElement("div");
+      c.className = "clabel";
+      c.textContent = j === 0 ? "Today" : (j % 3 === 0 ? Hub.dateLabel(Hub.daysAgoISO(j)) : "");
+      grid.appendChild(c);
+    }
+    var sinceAnki = Object.keys(data.anki).length;
+    document.getElementById("gridNote").textContent = sinceAnki
+      ? "Anki reviews count by calendar day and include reviews from Anki desktop and phone once they've synced to AnkiWeb."
+      : "";
+  }
+
+  function loadSummary() {
+    return Hub.api("GET", "/api/summary").then(function (d) { data = d; render(); });
+  }
+
+  function loadDue() {
+    return Hub.api("GET", "/api/anki/decks").then(function (decks) {
+      var top = decks.filter(function (d) { return d.depth === 0; });
+      due = { new: 0, learn: 0, review: 0 };
+      top.forEach(function (d) { due.new += d.new; due.learn += d.learn; due.review += d.review; });
+      due.total = due.new + due.learn + due.review;
+      return Hub.api("GET", "/api/anki/state");
+    }).then(function (st) {
+      if (st && st.sync && st.sync.lastSync) due.synced = new Date(st.sync.lastSync).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      if (data) render();
+    }).catch(function () { due = null; });
+  }
+
+  document.getElementById("practiceToggle").addEventListener("click", function () {
+    var btn = this;
+    var t = Hub.todayISO();
+    var isDone = done("practice", t);
+    btn.disabled = true;
+    Hub.api("PUT", "/api/practice/" + t, isDone ? { done: false } : { done: true, note: "" })
+      .then(loadSummary)
+      .catch(function (e) { Hub.toast("Couldn't save: " + e.message); })
+      .then(function () { btn.disabled = false; });
+  });
+
+  Hub.setupTheme();
+  loadSummary().catch(function (e) {
+    document.getElementById("fullStreakSub").textContent = "Couldn't reach the server: " + e.message;
+  });
+  loadDue();
+  // Refresh when coming back to the tab (e.g. after studying on another device).
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible") { loadSummary(); loadDue(); }
+  });
+})();
+</script>
+</body>
+</html>

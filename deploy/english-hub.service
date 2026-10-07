@@ -1,0 +1,19 @@
+[Unit]
+Description=English Hub (Today, Anki vocab, practice, shadowing)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=__APP_DIR__
+Environment=PYTHONUNBUFFERED=1
+Environment=HOST=0.0.0.0
+Environment=PORT=__PORT__
+Environment=SHADOWING_DB=__DATA_DIR__/shadowing.db
+Environment=ANKI_DIR=__DATA_DIR__/anki
+ExecStart=__VENV__/bin/python __APP_DIR__/server.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Shadowing Tracker</title>
+<title>Shadowing · English Hub</title>
 <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
 <link rel="icon" href="/icons/icon-32.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -12,6 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/app.css">
 <style>
   :root {
     --bg: #F1F0EC;
@@ -412,11 +413,12 @@
 </style>
 </head>
 <body>
+<nav id="appNav"></nav>
 <div class="wrap">
 
   <header class="top">
     <div class="title-block">
-      <h1>Shadowing Tracker</h1>
+      <h1>Shadowing</h1>
       <p>Log each session, watch the streak build, keep the habit going.</p>
     </div>
     <button class="theme-btn" id="themeToggle" type="button">Dark</button>
@@ -1101,5 +1103,6 @@
   });
 })();
 </script>
+<script src="/static/app.js"></script>
 </body>
 </html>

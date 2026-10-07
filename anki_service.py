@@ -16,6 +16,7 @@ CLI:
 """
 import datetime
 import getpass
+import html
 import json
 import mimetypes
 import os
@@ -26,11 +27,13 @@ import sys
 import threading
 import time
 
+import anki.lang
 from anki.collection import Collection  # must come first: anki.cards imports it circularly
 from anki.cards import Card
 from anki.scheduler_pb2 import CardAnswer, SchedulingStates
 from anki.sound import SoundOrVideoTag, TTSTag
 from anki.sync import SyncAuth, SyncOutput
+from anki.utils import strip_html
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ANKI_DIR = os.environ.get("ANKI_DIR", os.path.join(BASE_DIR, "data", "anki"))
@@ -42,6 +45,8 @@ DESKTOP_PREFS = os.path.expanduser("~/.local/share/Anki2/prefs21.db")
 ADD_DECK = "My Words"   # where cards added from this app go
 SYNC_EVERY = 10 * 60    # background sync interval, seconds
 SYNC_AFTER_REVIEW = 60  # sync this long after the last answer, seconds
+
+anki.lang.set_lang("en")  # anki.utils.strip_html and translated labels need this, as in Anki desktop
 
 RATINGS = {1: CardAnswer.AGAIN, 2: CardAnswer.HARD, 3: CardAnswer.GOOD, 4: CardAnswer.EASY}
 
@@ -88,7 +93,10 @@ def desktop_auth(profile="User 1"):
 # ---- Card rendering ---------------------------------------------------------
 
 PLAY_TAG = re.compile(r"\[anki:play:([qa]):(\d+)\]")
-TYPE_TAG = re.compile(r"\[\[type:[^\]]*\]\]")
+TYPE_TAG = re.compile(r"\[\[type:(.+?)\]\]")
+# Same idea as Anki desktop's reviewer: an input on the front, a diff on the back.
+TYPE_INPUT = ('<center><input type="text" id="typeans" autocomplete="off" autocapitalize="off" '
+              'autocorrect="off" spellcheck="false" placeholder="Type the answer"></center>')
 PLAY_BUTTON = (
     '<a class="replay-button soundLink" href="#" data-play="{side}:{idx}" '
     'onclick="parent.postMessage({{ankiPlay:\'{side}:{idx}\'}},\'*\');return false;">'
@@ -109,8 +117,9 @@ def av_list(tags):
     return out
 
 
-def render_html(text):
-    text = TYPE_TAG.sub("", text)
+def render_html(text, type_html=""):
+    """Turn Anki's [anki:play:…] and [[type:…]] markers into HTML for the card frame."""
+    text = TYPE_TAG.sub(lambda _: type_html, text)
     return PLAY_TAG.sub(lambda m: PLAY_BUTTON.format(side=m.group(1), idx=m.group(2)), text)
 
 
@@ -325,12 +334,45 @@ class AnkiService:
                 "queue": {0: "new", 1: "learn", 2: "review", 3: "learn"}.get(qc.queue, "review"),
                 "cardId": card.id,
                 "ord": card.ord,
-                "question": render_html(card.question()),
+                "question": render_html(card.question(), TYPE_INPUT),
                 "answer": render_html(card.answer()),
+                "typeAnswer": bool(TYPE_TAG.search(card.question())),
                 "avQuestion": av_list(card.question_av_tags()),
                 "avAnswer": av_list(card.answer_av_tags()),
                 "buttons": labels,
             }
+
+    def reveal(self, card_id, typed):
+        """Answer side of a type-in-the-answer card, with the typed text compared."""
+        with self.lock:
+            card = self.col.get_card(card_id)
+            text = card.answer()
+            m = TYPE_TAG.search(text)
+            if not m:
+                return render_html(text)
+            expected = self._type_expected(card, m.group(1))
+            if expected is None:
+                diff = html.escape(f"(Type answer: unknown field {m.group(1)})")
+            else:  # already wrapped in <code id=typeans>, with typeGood/typeBad/typeMissed spans
+                diff = self.col.compare_answer(expected[0], str(typed or "")[:2000], expected[1])
+            return render_html(text, f'<div class="typeans-result">{diff}</div>')
+
+    def _type_expected(self, card, spec):
+        """(correct text, combining) for a {{type:…}} field, or None if the field is unknown."""
+        combining = True
+        cloze = spec.startswith("cloze:")
+        if cloze:
+            spec = spec[len("cloze:"):]
+        if spec.startswith("nc:"):
+            combining, spec = False, spec[len("nc:"):]
+        note = card.note()
+        if spec not in note.keys():
+            return None
+        value = note[spec]
+        if cloze:
+            value = self.col.extract_cloze_for_typing(value, card.ord + 1)
+        value = html.unescape(strip_html(self.col.media.strip_av_tags(value)))
+        return value.strip(), combining
 
     def answer(self, card_id, rating, ms_taken):
         if rating not in RATINGS:

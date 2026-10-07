@@ -256,6 +256,8 @@ class Handler(BaseHTTPRequestHandler):
             if method == "POST" and route == "answer":
                 ANKI.answer(int(data["cardId"]), int(data["rating"]), data.get("ms"))
                 return self.send_json(200, {"ok": True})
+            if method == "POST" and route == "reveal":
+                return self.send_json(200, {"answer": ANKI.reveal(int(data["cardId"]), data.get("typed", ""))})
             if method == "POST" and route == "undo":
                 return self.send_json(200, {"undone": ANKI.undo()})
             if method == "POST" and route == "sync":

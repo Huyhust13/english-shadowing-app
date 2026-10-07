@@ -199,6 +199,7 @@
   var current = null;      // card being studied
   var shownAt = 0;
   var answerShown = false;
+  var typed = "";           // text typed into a type-in-the-answer card
   var audio = null;
   var audioQueue = [];
   var pollTimer = null;
@@ -361,12 +362,27 @@
       '<meta name="viewport" content="width=device-width,initial-scale=1">' +
       '<base href="' + location.origin + '/anki-media/">' +
       "<style>html,body{margin:0}body{padding:16px;overflow-wrap:break-word;box-sizing:border-box}" +
-      ".replay-button{display:inline-block;vertical-align:middle;margin:4px}img{max-width:100%;height:auto}</style>" +
+      ".replay-button{display:inline-block;vertical-align:middle;margin:4px}img{max-width:100%;height:auto}" +
+      "input#typeans{width:min(92%,560px);box-sizing:border-box;margin:10px 0;padding:10px 14px;font-size:1.15em;" +
+      "border:2px solid #4a7bd8;border-radius:10px;background:#fff;color:#111;outline:none}" +
+      "input#typeans:focus{box-shadow:0 0 0 3px rgba(74,123,216,.3)}" +
+      ".typeans-result{margin:10px 0;font-size:1.15em}code#typeans{font-family:'JetBrains Mono',ui-monospace,monospace;white-space:pre-wrap}" +
+      ".typeGood{background:#afa;color:#000}.typeBad{background:#faa;color:#000}.typeMissed{background:#ccc;color:#000}</style>" +
       '</head><body class="card card' + (ord + 1) + (isDark() ? " nightMode night_mode" : "") + '">' + html +
       "<script>(function(){function h(){parent.postMessage({ankiHeight:document.body.scrollHeight},'*')}" +
       "if(window.ResizeObserver)new ResizeObserver(h).observe(document.body);addEventListener('load',h);h();" +
+      // Like Anki desktop: on the back, bring the typed-answer diff (or <hr id=answer>) into view.
+      "addEventListener('load',function(){var a=document.querySelector('.typeans-result')||document.getElementById('answer');" +
+      "if(a)parent.postMessage({ankiAnswerTop:a.getBoundingClientRect().top},'*')});" +
       "document.addEventListener('keydown',function(e){if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;" +
-      "parent.postMessage({ankiKey:e.key,mod:e.ctrlKey||e.metaKey||e.altKey},'*');if(e.key===' ')e.preventDefault();});})();<\/script>" +
+      "parent.postMessage({ankiKey:e.key,mod:e.ctrlKey||e.metaKey||e.altKey},'*');if(e.key===' ')e.preventDefault();});" +
+      // Type-in-the-answer: report what's typed; Enter reveals the answer.
+      "var t=document.querySelector('input#typeans');if(t){t.focus();" +
+      "addEventListener('focus',function(){t.focus()});" +
+      "addEventListener('message',function(e){if(e.data==='focusTypeans')t.focus()});" +
+      "t.addEventListener('input',function(){parent.postMessage({ankiTyped:t.value},'*')});" +
+      "t.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.isComposing){e.preventDefault();" +
+      "parent.postMessage({ankiTyped:t.value,ankiTypeEnter:true},'*')}});}})();<\/script>" +
       "</body></html>";
   }
 
@@ -374,8 +390,20 @@
     if (e.source !== $("cardFrame").contentWindow || !e.data) return;
     if (e.data.ankiHeight) $("cardFrame").style.height = Math.max(240, Math.min(e.data.ankiHeight + 4, 4000)) + "px";
     if (e.data.ankiPlay) playTag(e.data.ankiPlay);
+    if (typeof e.data.ankiTyped === "string" && !answerShown) typed = e.data.ankiTyped;
+    if (typeof e.data.ankiAnswerTop === "number" && answerShown) scrollAnswerIntoView(e.data.ankiAnswerTop);
+    if (e.data.ankiTypeEnter) showAnswer();
     if (e.data.ankiKey && !e.data.mod) handleKey(e.data.ankiKey);
   });
+
+  // Scroll the page so a point `top` px into the card is visible above the sticky answer bar.
+  function scrollAnswerIntoView(top) {
+    var frameTop = $("cardFrame").getBoundingClientRect().top;
+    var y = frameTop + top;                       // position in the viewport
+    var bar = document.querySelector(".answer-bar").getBoundingClientRect().height;
+    if (y > 70 && y < window.innerHeight - bar - 80) return;   // already comfortably visible
+    window.scrollTo({ top: window.scrollY + y - 90, behavior: "smooth" });
+  }
 
   function stopAudio() {
     audioQueue = [];
@@ -440,11 +468,17 @@
       $("congrats").hidden = true;
       current = n;
       answerShown = false;
+      typed = "";
       shownAt = Date.now();
       $("cardFrame").srcdoc = cardDoc(n.question, n.ord);
       $("showBtn").hidden = false;
       $("easeRow").hidden = true;
-      $("showBtn").focus({ preventScroll: true });
+      // Type-answer cards: put the keyboard focus in the card's input; otherwise on Show answer.
+      if (n.typeAnswer) $("cardFrame").addEventListener("load", function () {
+        $("cardFrame").focus();
+        $("cardFrame").contentWindow.postMessage("focusTypeans", "*");
+      }, { once: true });
+      else $("showBtn").focus({ preventScroll: true });
       playAll(n.avQuestion);
     }).catch(function (e) {
       if (e.status === 400 || /deck/i.test(e.message)) { try { localStorage.removeItem(DECK_KEY); } catch (x) {} }
@@ -458,7 +492,18 @@
   function showAnswer() {
     if (!current || answerShown) return;
     answerShown = true;
-    $("cardFrame").srcdoc = cardDoc(current.answer, current.ord);
+    var card = current;
+    if (card.typeAnswer) {
+      // The server compares what was typed with the field, like Anki desktop does.
+      Hub.api("POST", "/api/anki/reveal", { cardId: card.cardId, typed: typed }).then(function (r) {
+        if (current === card) $("cardFrame").srcdoc = cardDoc(r.answer, card.ord);
+      }).catch(function (e) {
+        Hub.toast(e.message);
+        if (current === card) $("cardFrame").srcdoc = cardDoc(card.answer, card.ord);
+      });
+    } else {
+      $("cardFrame").srcdoc = cardDoc(card.answer, card.ord);
+    }
     $("showBtn").hidden = true;
     var row = $("easeRow");
     row.hidden = false;

@@ -47,10 +47,11 @@ If Anki desktop on the same machine is already logged in, you can reuse its logi
 
 ### On the Pi (next to the old Shadowing Tracker)
 
-The Pi runs English Hub on port 8090 (<http://english.nvh:8090>), next to the original
-app on port 80, and both use the **same** shadowing database, so sessions logged in
-either one show up in both (the hub only adds its `practice_days` table). The Telegram
-reminder keeps working unchanged.
+The Pi runs English Hub on port 8090 (<http://english.nvh:8090>). It uses the original
+app's database, `~/shadowing-app/data/shadowing.db` (the hub only adds its
+`practice_days` table), so the old history and the Telegram reminder carry on. Since
+2026-10-08 the old web app (`shadowing-tracker`, port 80) is disabled; the reminder's
+link points to the hub (`SHADOWING_URL=http://192.168.10.21:8090/`).
 
 ```sh
 rsync -av --exclude .git --exclude data/ --exclude __pycache__ --exclude .claude \

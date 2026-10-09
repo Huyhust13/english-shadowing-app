@@ -79,4 +79,4 @@ fi
 
 echo "English Hub is running on http://127.0.0.1:$PORT (public: $(sed -n 's/^PUBLIC_URL=//p' "$ENV_FILE"))"
 echo "First time? Create your account:  cd $APP_DIR && $VENV/bin/python -m hub create-admin <username> --link"
-echo "Logs: journalctl --user -u english-hub -f"
+echo "Logs: journalctl --user -u english-hub -f   (or: sudo journalctl _SYSTEMD_USER_UNIT=english-hub.service -f)"

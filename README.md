@@ -109,7 +109,7 @@ sudo tailscale funnel --bg 8090                  # publish https://<machine>.<ta
 | `~/.local/share/english-hub/data/hub.db` | accounts and everyone's logs |
 | `~/.local/share/english-hub/data/users/<id>/anki/` | each person's Anki collection, media, daily backups |
 | `~/.local/share/english-hub/data/secret_key`, `vapid_private.pem` | cookie key, Web Push key |
-| `journalctl --user -u english-hub -f` | logs |
+| `sudo journalctl _SYSTEMD_USER_UNIT=english-hub.service -f` | logs (the Pi keeps user logs in the system journal) |
 
 ---
 
@@ -131,7 +131,7 @@ From the command line on the Pi (`cd ~/english-hub`, using the venv's python):
 ## Back up
 
 ```sh
-ssh huy@english.nvh "sqlite3 ~/.local/share/english-hub/data/hub.db '.backup /tmp/hub-backup.db'"
+ssh huy@english.nvh "python3 -c \"import sqlite3,os; s=sqlite3.connect(os.path.expanduser('~/.local/share/english-hub/data/hub.db')); d=sqlite3.connect('/tmp/hub-backup.db'); s.backup(d); d.close()\""
 rsync -av huy@english.nvh:/tmp/hub-backup.db ./hub-$(date +%F).db
 ```
 

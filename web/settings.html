@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Settings · English Hub</title>
+<link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/icons/icon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#B4722E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/app.css">
+<style>
+  .welcome { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .welcome h2 { color: var(--text); font-size: 1.05rem; margin: 0 0 6px; }
+  .welcome p { margin: 0; font-size: 0.88rem; color: var(--muted); }
+  .channel { display: flex; align-items: center; gap: 14px; padding: 14px 0; border-top: 1px solid var(--line); }
+  .channel:first-of-type { border-top: none; padding-top: 4px; }
+  .channel .ic { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; background: var(--surface-2); font-size: 1.15rem; flex-shrink: 0; }
+  .channel .txt { flex: 1; min-width: 0; }
+  .channel .name { font-weight: 600; font-size: 0.95rem; }
+  .channel .st { font-size: 0.8rem; color: var(--muted); }
+  .channel .st.ok { color: var(--success); }
+  .channel .actions { display: flex; gap: 6px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+  .switch-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; font-weight: 500; }
+  .switch-row input { width: 18px; height: 18px; accent-color: var(--accent); }
+  .hint { font-size: 0.8rem; color: var(--muted); background: var(--surface-2); border-radius: 8px; padding: 10px 12px; margin-top: 8px; }
+  @media (max-width: 520px) { .channel { flex-wrap: wrap; } .channel .actions { width: 100%; justify-content: flex-start; padding-left: 52px; } }
+</style>
+</head>
+<body class="hub">
+<nav id="appNav"></nav>
+<div class="wrap">
+
+  <header class="page-head">
+    <div>
+      <h1>Settings</h1>
+      <p id="who"></p>
+    </div>
+    <button class="theme-btn" id="themeToggle" type="button">Dark</button>
+  </header>
+
+  <section class="card welcome" id="welcome" hidden>
+    <h2>👋 Welcome to English Hub!</h2>
+    <p>One quick step: choose how you'd like to be reminded on days you haven't practised. Telegram works everywhere; notifications work on this device. You can do both.</p>
+  </section>
+
+  <section class="card">
+    <h2>Daily reminder</h2>
+    <label class="switch-row"><input type="checkbox" id="remEnabled"> Remind me if I haven't finished today's practice</label>
+    <div class="row">
+      <div class="field">
+        <label for="remTime">At</label>
+        <input class="input" type="time" id="remTime" step="60">
+      </div>
+      <div class="field">
+        <label for="tz">Timezone</label>
+        <select id="tz"></select>
+      </div>
+    </div>
+    <div class="btn-row"><button class="btn primary small" id="saveRem" type="button">Save</button><span class="muted small" id="remSaved"></span></div>
+
+    <h2 style="margin-top:22px">Send reminders to</h2>
+    <div class="channel" id="tgRow">
+      <div class="ic" aria-hidden="true">✈️</div>
+      <div class="txt"><div class="name">Telegram</div><div class="st" id="tgStatus">…</div></div>
+      <div class="actions">
+        <button class="btn primary small" id="tgConnect" type="button" hidden>Connect Telegram</button>
+        <button class="btn small danger" id="tgDisconnect" type="button" hidden>Disconnect</button>
+      </div>
+    </div>
+    <div class="channel" id="pushRow">
+      <div class="ic" aria-hidden="true">🔔</div>
+      <div class="txt"><div class="name">Notifications on this device</div><div class="st" id="pushStatus">…</div></div>
+      <div class="actions">
+        <button class="btn primary small" id="pushOn" type="button" hidden>Turn on</button>
+        <button class="btn small" id="pushOff" type="button" hidden>Turn off</button>
+      </div>
+    </div>
+    <div class="hint" id="iosHint" hidden>On iPhone/iPad, notifications only work from the home-screen app: tap <b>Share</b> → <b>Add to Home Screen</b>, open English Hub from the new icon, then come back here and press <b>Turn on</b>.</div>
+    <div class="btn-row" style="margin-top:14px"><button class="btn small" id="testBtn" type="button">Send a test reminder</button><span class="muted small" id="testResult"></span></div>
+  </section>
+
+  <section class="card">
+    <h2>Vocab (Anki)</h2>
+    <p class="small" id="ankiStatus" style="margin:0 0 10px"></p>
+    <div class="btn-row"><a class="btn small" href="/vocab">Open Vocab</a><button class="btn small danger" id="ankiOut" type="button" hidden>Disconnect AnkiWeb</button></div>
+  </section>
+
+  <section class="card">
+    <h2>Account</h2>
+    <div class="row">
+      <div class="field">
+        <label for="displayName">Name</label>
+        <input class="input" id="displayName" maxlength="60">
+      </div>
+      <div class="field" style="align-self:flex-end"><button class="btn small" id="saveName" type="button">Save name</button></div>
+    </div>
+    <details style="margin:6px 0 14px">
+      <summary class="small" style="cursor:pointer">Change password</summary>
+      <div class="row" style="margin-top:10px">
+        <div class="field"><label for="pwCurrent">Current password</label><input class="input" type="password" id="pwCurrent" autocomplete="current-password"></div>
+        <div class="field"><label for="pwNew">New password (8+ characters)</label><input class="input" type="password" id="pwNew" autocomplete="new-password" minlength="8"></div>
+      </div>
+      <button class="btn small" id="pwSave" type="button">Change password</button>
+    </details>
+    <div class="btn-row">
+      <a class="btn small" href="/api/me/export">Download my data</a>
+      <a class="btn small" href="/admin" id="adminLink" hidden>Admin</a>
+      <button class="btn small" id="logoutBtn" type="button">Log out</button>
+      <button class="btn small danger" id="logoutAll" type="button">Log out everywhere</button>
+    </div>
+  </section>
+
+</div>
+<script src="/static/app.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var me = null;
+  var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  var standalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+  var pushSupported = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+
+  if (new URLSearchParams(location.search).get("welcome")) $("welcome").hidden = false;
+
+  function fillTimezones(current) {
+    var sel = $("tz");
+    var zones = [];
+    try { zones = Intl.supportedValuesOf("timeZone"); } catch (e) {}
+    if (zones.indexOf(current) < 0) zones.unshift(current);
+    sel.innerHTML = "";
+    zones.forEach(function (z) {
+      var o = document.createElement("option");
+      o.value = z; o.textContent = z.replace(/_/g, " ");
+      if (z === current) o.selected = true;
+      sel.appendChild(o);
+    });
+  }
+
+  function render() {
+    $("who").textContent = "Logged in as " + me.displayName + " (" + me.username + ")";
+    $("remEnabled").checked = me.reminder.enabled;
+    $("remTime").value = me.reminder.time;
+    if (!$("tz").options.length) fillTimezones(me.timezone);
+    $("displayName").value = me.displayName;
+    $("adminLink").hidden = !me.isAdmin;
+
+    // Telegram
+    var tg = me.telegram;
+    $("tgConnect").hidden = !tg.available || tg.linked;
+    $("tgDisconnect").hidden = !tg.linked;
+    $("tgStatus").className = "st" + (tg.linked ? " ok" : "");
+    $("tgStatus").textContent = !tg.available ? "Not set up on this server."
+      : tg.linked ? "✓ Connected" + (tg.name ? " (" + tg.name + ")" : "") + (tg.bot ? " · @" + tg.bot : "")
+      : "Get a message from @" + (tg.bot || "the bot") + ".";
+
+    // Anki
+    var a = me.anki;
+    $("ankiStatus").textContent = !a.available ? "Anki isn't available on this server."
+      : a.connected ? "✓ Connected to AnkiWeb as " + a.username + ". Reviews count towards your streak."
+      : "Not connected. Log in with your own AnkiWeb account on the Vocab page to study your decks here (optional).";
+    $("ankiOut").hidden = !a.connected;
+    renderPush();
+  }
+
+  // ---- Web Push on this device ----
+  function renderPush(subscribed) {
+    var st = $("pushStatus");
+    $("iosHint").hidden = !(isIOS && !standalone);
+    $("pushOn").hidden = $("pushOff").hidden = true;
+    st.className = "st";
+    if (!me.push.available) { st.textContent = "Not set up on this server."; return; }
+    if (!pushSupported) { st.textContent = isIOS && !standalone ? "Add English Hub to your Home Screen first (see below)." : "This browser doesn't support notifications."; return; }
+    if (Notification.permission === "denied") { st.textContent = "Blocked in browser settings. Allow notifications for this site, then reload."; return; }
+    if (subscribed === undefined) {
+      currentSubscription().then(function (sub) { renderPush(!!sub); });
+      st.textContent = "Checking…";
+      return;
+    }
+    if (subscribed) {
+      st.className = "st ok";
+      st.textContent = "✓ On for this device" + (me.push.devices > 1 ? " (" + me.push.devices + " devices in total)" : "");
+      $("pushOff").hidden = false;
+    } else {
+      st.textContent = me.push.devices ? "Off here (on for " + me.push.devices + " other device" + (me.push.devices > 1 ? "s" : "") + ")." : "Off.";
+      $("pushOn").hidden = false;
+    }
+  }
+
+  function registration() {
+    return navigator.serviceWorker.register("/sw.js").then(function () { return navigator.serviceWorker.ready; });
+  }
+
+  function currentSubscription() {
+    return registration().then(function (reg) { return reg.pushManager.getSubscription(); }).then(function (sub) {
+      // Keep the server's copy in step (it may have dropped an expired one).
+      if (sub) Hub.api("POST", "/api/me/push", { subscription: sub.toJSON() }).catch(function () {});
+      return sub;
+    }).catch(function () { return null; });
+  }
+
+  function keyBytes(b64) {
+    var pad = "=".repeat((4 - (b64.length % 4)) % 4);
+    var raw = atob((b64 + pad).replace(/-/g, "+").replace(/_/g, "/"));
+    var out = new Uint8Array(raw.length);
+    for (var i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+    return out;
+  }
+
+  $("pushOn").addEventListener("click", function () {
+    var btn = this;
+    btn.disabled = true;
+    Notification.requestPermission().then(function (perm) {
+      if (perm !== "granted") throw new Error("Notifications weren't allowed.");
+      return registration();
+    }).then(function (reg) {
+      return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(me.push.publicKey) });
+    }).then(function (sub) {
+      return Hub.api("POST", "/api/me/push", { subscription: sub.toJSON() });
+    }).then(function () {
+      Hub.toast("Notifications are on for this device.");
+      return load();
+    }).catch(function (e) { Hub.toast(e.message, 5000); renderPush(); })
+      .then(function () { btn.disabled = false; });
+  });
+
+  $("pushOff").addEventListener("click", function () {
+    registration().then(function (reg) { return reg.pushManager.getSubscription(); }).then(function (sub) {
+      if (!sub) return null;
+      var endpoint = sub.endpoint;
+      return sub.unsubscribe().then(function () { return Hub.api("DELETE", "/api/me/push", { endpoint: endpoint }); });
+    }).then(function () { Hub.toast("Notifications are off for this device."); return load(); })
+      .catch(function (e) { Hub.toast(e.message); });
+  });
+
+  // ---- Telegram ----
+  var tgPoll = null;
+  $("tgConnect").addEventListener("click", function () {
+    // Open the window synchronously (popup blockers), then point it at the bot.
+    var win = window.open("", "_blank");
+    Hub.api("POST", "/api/me/telegram/link").then(function (r) {
+      if (win) win.location.href = r.url; else location.href = r.url;
+      $("tgStatus").textContent = "Press Start in Telegram… waiting";
+      var tries = 0;
+      clearInterval(tgPoll);
+      tgPoll = setInterval(function () {
+        if (++tries > 100) { clearInterval(tgPoll); load(); return; }
+        Hub.api("GET", "/api/me").then(function (m) {
+          if (m.telegram.linked) { clearInterval(tgPoll); me = m; render(); Hub.toast("Telegram connected!"); }
+        });
+      }, 3000);
+    }).catch(function (e) { if (win) win.close(); Hub.toast(e.message, 5000); });
+  });
+  Hub.armed($("tgDisconnect"), "Disconnect?", function () {
+    Hub.api("DELETE", "/api/me/telegram").then(load).catch(function (e) { Hub.toast(e.message); });
+  });
+
+  // ---- Reminder settings ----
+  $("saveRem").addEventListener("click", function () {
+    Hub.api("PUT", "/api/me", {
+      reminderEnabled: $("remEnabled").checked, reminderTime: $("remTime").value, timezone: $("tz").value
+    }).then(function () {
+      $("remSaved").textContent = "Saved.";
+      setTimeout(function () { $("remSaved").textContent = ""; }, 2500);
+      return load();
+    }).catch(function (e) { Hub.toast(e.message, 5000); });
+  });
+
+  $("testBtn").addEventListener("click", function () {
+    var btn = this;
+    btn.disabled = true;
+    $("testResult").textContent = "Sending…";
+    Hub.api("POST", "/api/me/test-notification").then(function (r) {
+      var parts = [];
+      if (r.sent.telegram) parts.push("Telegram");
+      if (r.sent.push) parts.push(r.sent.push + " device" + (r.sent.push > 1 ? "s" : ""));
+      $("testResult").textContent = parts.length ? "Sent to " + parts.join(" and ") + "." : "Nothing sent: connect Telegram or turn on notifications first.";
+    }).catch(function (e) { $("testResult").textContent = e.message; })
+      .then(function () { btn.disabled = false; });
+  });
+
+  Hub.armed($("ankiOut"), "Disconnect?", function () {
+    Hub.api("POST", "/api/anki/logout").then(function () { Hub.toast("AnkiWeb disconnected."); return load(); })
+      .catch(function (e) { Hub.toast(e.message); });
+  });
+
+  // ---- Account ----
+  $("saveName").addEventListener("click", function () {
+    Hub.api("PUT", "/api/me", { displayName: $("displayName").value })
+      .then(function () { Hub.toast("Saved."); return load(); }).catch(function (e) { Hub.toast(e.message); });
+  });
+  $("pwSave").addEventListener("click", function () {
+    Hub.api("POST", "/api/me/password", { current: $("pwCurrent").value, "new": $("pwNew").value }).then(function () {
+      $("pwCurrent").value = $("pwNew").value = "";
+      Hub.toast("Password changed. Other devices were logged out.");
+    }).catch(function (e) { Hub.toast(e.message, 5000); });
+  });
+  $("logoutBtn").addEventListener("click", function () {
+    Hub.api("POST", "/api/auth/logout").then(function () { location.replace("/login"); });
+  });
+  Hub.armed($("logoutAll"), "Sure? All devices", function () {
+    Hub.api("POST", "/api/me/logout-everywhere").then(function () { location.replace("/login"); });
+  });
+
+  function load() {
+    return Hub.api("GET", "/api/me").then(function (m) { me = m; render(); });
+  }
+
+  Hub.setupTheme();
+  load().catch(function (e) { Hub.toast("Couldn't load settings: " + e.message); });
+})();
+</script>
+</body>
+</html>

@@ -1,29 +1,22 @@
-#!/usr/bin/env python3
-"""Anki side of English Hub: a real Anki collection that syncs with AnkiWeb.
+"""One person's Anki collection, synced with their own AnkiWeb account.
 
-The collection lives in data/anki/ and is kept in step with the person's AnkiWeb
-account, exactly like Anki desktop or AnkiDroid would. AnkiWeb stays the source of
-truth: this module only ever does a normal sync, or a full *download* when the local
-copy is empty or when explicitly asked. It never uploads over AnkiWeb.
+Each user has a collection in data/users/<id>/anki/, kept in step with *their*
+AnkiWeb account exactly like Anki desktop or AnkiDroid would. AnkiWeb stays the
+source of truth: this module only ever does a normal sync, or a full *download* when
+the local copy is empty or when explicitly asked. It never uploads over AnkiWeb.
 
-Needs the `anki` package (pip install anki); server.py runs without it and reports
+AnkiService doesn't know where the AnkiWeb login is stored; it's given a store
+object with load() / save() / clear() (see anki_pool.AccountStore). Opening,
+closing and periodic syncing are driven by anki_pool.AnkiPool.
+
+Needs the `anki` package (pip install anki); the app runs without it and reports
 the Anki part as unavailable.
-
-CLI:
-  python anki_service.py login            log in with AnkiWeb email + password
-  python anki_service.py import-desktop   reuse the login of Anki desktop on this machine
-  python anki_service.py sync             one sync, then print the status
 """
 import datetime
-import getpass
 import html
-import json
 import mimetypes
 import os
-import pickle
 import re
-import sqlite3
-import sys
 import threading
 import time
 
@@ -34,13 +27,6 @@ from anki.scheduler_pb2 import CardAnswer, SchedulingStates
 from anki.sound import SoundOrVideoTag, TTSTag
 from anki.sync import SyncAuth, SyncOutput
 from anki.utils import strip_html
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-ANKI_DIR = os.environ.get("ANKI_DIR", os.path.join(BASE_DIR, "data", "anki"))
-COL_PATH = os.path.join(ANKI_DIR, "collection.anki2")
-BACKUP_DIR = os.path.join(ANKI_DIR, "backups")
-AUTH_PATH = os.path.expanduser(os.environ.get("ANKI_AUTH", "~/.config/english-hub/ankiweb.json"))
-DESKTOP_PREFS = os.path.expanduser("~/.local/share/Anki2/prefs21.db")
 
 ADD_DECK = "My Words"   # where cards added from this app go
 SYNC_EVERY = 10 * 60    # background sync interval, seconds
@@ -53,41 +39,6 @@ RATINGS = {1: CardAnswer.AGAIN, 2: CardAnswer.HARD, 3: CardAnswer.GOOD, 4: CardA
 
 class AnkiError(Exception):
     """An error worth showing to the person as-is."""
-
-
-# ---- AnkiWeb login ----------------------------------------------------------
-
-def load_auth():
-    try:
-        with open(AUTH_PATH) as f:
-            data = json.load(f)
-    except (OSError, ValueError):
-        return None
-    if not data.get("hkey"):
-        return None
-    return data
-
-
-def save_auth(hkey, endpoint, username):
-    os.makedirs(os.path.dirname(AUTH_PATH), exist_ok=True)
-    fd = os.open(AUTH_PATH, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(fd, "w") as f:
-        json.dump({"hkey": hkey, "endpoint": endpoint or "", "username": username or ""}, f)
-
-
-def desktop_auth(profile="User 1"):
-    """Return (hkey, endpoint, username) from Anki desktop's profile on this machine."""
-    conn = sqlite3.connect(f"file:{DESKTOP_PREFS}?mode=ro", uri=True)
-    try:
-        row = conn.execute("SELECT cast(data as blob) FROM profiles WHERE name=?", (profile,)).fetchone()
-    finally:
-        conn.close()
-    if not row:
-        raise AnkiError(f"no Anki desktop profile called {profile!r}")
-    prof = pickle.loads(row[0])
-    if not prof.get("syncKey"):
-        raise AnkiError("Anki desktop is not logged in to AnkiWeb")
-    return prof["syncKey"], prof.get("currentSyncUrl") or "", prof.get("syncUser") or ""
 
 
 # ---- Card rendering ---------------------------------------------------------
@@ -126,19 +77,23 @@ def render_html(text, type_html=""):
 # ---- The service ------------------------------------------------------------
 
 class AnkiService:
-    def __init__(self):
-        os.makedirs(ANKI_DIR, exist_ok=True)
+    def __init__(self, anki_dir, store):
+        os.makedirs(anki_dir, exist_ok=True)
+        self.store = store
+        self.backup_dir = os.path.join(anki_dir, "backups")
         self.lock = threading.RLock()
-        self.col = Collection(COL_PATH)
+        self.col = Collection(os.path.join(anki_dir, "collection.anki2"))
         self.status = {"state": "idle", "message": "", "lastSync": None, "lastError": ""}
-        self.last_answer = 0.0
-        self._wake = threading.Event()
+        self.last_answer = 0.0       # time of the last review; a sync follows a minute later
+        self.last_used = time.time()  # the pool closes collections nobody used for a while
+        self.next_periodic = 0.0      # due for a sync as soon as it's opened
+        self.sync_requested = False
         self._last_backup_day = None
 
     # -- sync --
 
     def auth(self):
-        data = load_auth()
+        data = self.store.load()
         if not data:
             return None
         return SyncAuth(hkey=data["hkey"], endpoint=data["endpoint"] or None)
@@ -149,13 +104,10 @@ class AnkiService:
                 auth = self.col.sync_login(username, password, None)
             except Exception as e:
                 raise AnkiError(f"AnkiWeb login failed: {e}") from e
-            save_auth(auth.hkey, auth.endpoint, username)
+            self.store.save(auth.hkey, auth.endpoint, username)
 
     def logout(self):
-        try:
-            os.remove(AUTH_PATH)
-        except FileNotFoundError:
-            pass
+        self.store.clear()
 
     def sync(self, force_download=False):
         """Sync with AnkiWeb. Returns the status dict; never uploads a full collection."""
@@ -192,8 +144,8 @@ class AnkiService:
 
     def _apply_endpoint(self, out: SyncOutput):
         if out.new_endpoint:
-            data = load_auth() or {}
-            save_auth(data.get("hkey"), out.new_endpoint, data.get("username"))
+            data = self.store.load() or {}
+            self.store.save(data.get("hkey"), out.new_endpoint, data.get("username"))
 
     def _handle_required(self, auth, out: SyncOutput):
         req = out.required
@@ -223,8 +175,8 @@ class AnkiService:
         if self._last_backup_day == today or self.col.card_count() == 0:
             return
         try:
-            os.makedirs(BACKUP_DIR, exist_ok=True)
-            self.col.create_backup(backup_folder=BACKUP_DIR, force=True, wait_for_completion=False)
+            os.makedirs(self.backup_dir, exist_ok=True)
+            self.col.create_backup(backup_folder=self.backup_dir, force=True, wait_for_completion=False)
             self._last_backup_day = today
         except Exception as e:
             print("anki backup failed:", e, flush=True)
@@ -242,21 +194,22 @@ class AnkiService:
             return {"active": False, "error": str(e)}
 
     def request_sync_soon(self):
-        self._wake.set()
+        self.sync_requested = True
 
-    def start_background(self):
-        def loop():
-            next_periodic = 0.0
-            while True:
-                now = time.time()
-                due_after_review = self.last_answer and now - self.last_answer >= SYNC_AFTER_REVIEW
-                if now >= next_periodic or due_after_review or self._wake.is_set():
-                    self._wake.clear()
-                    self.last_answer = 0.0
-                    self.sync()
-                    next_periodic = time.time() + SYNC_EVERY
-                self._wake.wait(15)
-        threading.Thread(target=loop, name="anki-sync", daemon=True).start()
+    def sync_due(self, now):
+        """Whether the pool's background loop should sync this collection now."""
+        due_after_review = self.last_answer and now - self.last_answer >= SYNC_AFTER_REVIEW
+        return bool(self.sync_requested or due_after_review or now >= self.next_periodic)
+
+    def background_sync(self):
+        self.sync_requested = False
+        self.last_answer = 0.0
+        self.sync()
+        self.next_periodic = time.time() + SYNC_EVERY
+
+    def busy(self):
+        """True while a sync or media sync runs; the pool won't close it then."""
+        return self.status["state"] == "syncing" or self.media_status().get("active", False)
 
     def close(self):
         with self.lock:
@@ -266,7 +219,7 @@ class AnkiService:
 
     def state(self):
         with self.lock:
-            data = load_auth()
+            data = self.store.load()
             return {
                 "available": True,
                 "loggedIn": bool(data),
@@ -294,13 +247,13 @@ class AnkiService:
             walk(tree, 0)
             return out
 
-    def review_days(self):
-        """{ 'YYYY-MM-DD': reviews } by local calendar date, for streaks and charts."""
+    def review_days(self, tz):
+        """{ 'YYYY-MM-DD': reviews } by calendar date in timezone tz, for streaks and charts."""
         with self.lock:
             stamps = self.col.db.list("SELECT id FROM revlog WHERE ease > 0")
         days = {}
         for ms in stamps:
-            day = datetime.date.fromtimestamp(ms / 1000).isoformat()
+            day = datetime.datetime.fromtimestamp(ms / 1000, tz).date().isoformat()
             days[day] = days.get(day, 0) + 1
         return days
 
@@ -486,33 +439,3 @@ def card_due_text(col, card):
 
 def guess_type(path):
     return mimetypes.guess_type(path)[0] or "application/octet-stream"
-
-
-
-def main(argv):
-    cmd = argv[1] if len(argv) > 1 else ""
-    if cmd == "login":
-        svc = AnkiService()
-        user = input("AnkiWeb email: ").strip()
-        svc.login(user, getpass.getpass("AnkiWeb password: "))
-        print("Logged in; credentials saved to", AUTH_PATH)
-    elif cmd == "import-desktop":
-        hkey, endpoint, user = desktop_auth(argv[2] if len(argv) > 2 else "User 1")
-        save_auth(hkey, endpoint, user)
-        print(f"Reused Anki desktop's AnkiWeb login for {user}; saved to {AUTH_PATH}")
-    elif cmd == "sync":
-        svc = AnkiService()
-        print(json.dumps(svc.sync(), indent=2))
-        while svc.media_status().get("active"):
-            print("media:", svc.media_status(), flush=True)
-            time.sleep(5)
-        print("cards:", svc.col.card_count())
-        svc.col.close()
-    else:
-        print(__doc__)
-        return 2
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main(sys.argv))

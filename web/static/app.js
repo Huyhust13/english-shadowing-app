@@ -25,8 +25,15 @@
     host.innerHTML =
       '<div class="nav-inner">' +
       '<a class="brand" href="/"><img src="/icons/icon.svg" alt=""><span>English Hub</span></a>' +
-      '<div class="tabs"></div></div>';
+      '<div class="tabs"></div>' +
+      '<a class="avatar" href="/settings" title="Settings" aria-label="Settings"></a></div>';
     var tabs = host.querySelector(".tabs");
+    var avatar = host.querySelector(".avatar");
+    if (here === "/settings" || here === "/admin") avatar.setAttribute("aria-current", "page");
+    me().then(function (m) {
+      avatar.textContent = (m.displayName || m.username || "?").trim().charAt(0).toUpperCase();
+      avatar.title = m.displayName + " · Settings";
+    }).catch(function () {});
     PAGES.forEach(function (p) {
       var a = document.createElement("a");
       a.href = p.href;
@@ -79,6 +86,12 @@
     return n;
   }
 
+  var mePromise = null;
+  function me() {
+    if (!mePromise) mePromise = api("GET", "/api/me");
+    return mePromise;
+  }
+
   function api(method, url, payload) {
     return fetch(url, {
       method: method,
@@ -88,6 +101,10 @@
       return res.text().then(function (text) {
         var data = null;
         try { data = text ? JSON.parse(text) : null; } catch (e) {}
+        if (res.status === 401 && url.indexOf("/api/auth/") !== 0) {
+          // Logged out (expired, or the password changed elsewhere): back to the login page.
+          location.replace("/login?next=" + encodeURIComponent(location.pathname + location.search + location.hash));
+        }
         if (!res.ok) {
           var err = new Error((data && data.error) || (method + " " + url + " failed: " + res.status));
           err.status = res.status;
@@ -139,6 +156,7 @@
     dateLabel: dateLabel,
     streak: streak,
     api: api,
+    me: me,
     toast: toast,
     armed: armed
   };

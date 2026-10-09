@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Admin · English Hub</title>
+<link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/icons/icon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#B4722E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/app.css">
+<style>
+  .linkbox { display: flex; gap: 8px; margin-top: 12px; }
+  .linkbox input { flex: 1; min-width: 0; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 0.8rem; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+  th { text-align: left; font-size: 0.74rem; color: var(--muted); font-weight: 600; padding: 6px 8px 8px 0; }
+  td { padding: 10px 8px 10px 0; border-top: 1px solid var(--line); vertical-align: middle; }
+  td.actions { text-align: right; white-space: nowrap; }
+  .tag { font-size: 0.68rem; font-weight: 600; padding: 2px 7px; border-radius: 99px; background: var(--surface-2); color: var(--muted); margin-left: 6px; }
+  .off { opacity: 0.55; }
+  @media (max-width: 600px) { .hide-sm { display: none; } }
+</style>
+</head>
+<body class="hub">
+<nav id="appNav"></nav>
+<div class="wrap">
+
+  <header class="page-head">
+    <div>
+      <h1>Admin</h1>
+      <p>Invite friends and manage accounts. You never see anyone's logs here.</p>
+    </div>
+    <button class="theme-btn" id="themeToggle" type="button">Dark</button>
+  </header>
+
+  <section class="card">
+    <h2>Invite a friend</h2>
+    <div class="row">
+      <div class="field" style="margin:0"><input class="input" id="note" placeholder="Who is it for? (only you see this)" maxlength="200"></div>
+      <div style="flex:0 0 auto;min-width:0"><button class="btn primary" id="inviteBtn" type="button">Create invite link</button></div>
+    </div>
+    <div id="linkOut" hidden>
+      <div class="linkbox"><input class="input" id="linkUrl" readonly><button class="btn" id="copyBtn" type="button">Copy</button></div>
+      <p class="muted small" id="linkNote" style="margin:8px 0 0"></p>
+    </div>
+    <div id="pending" style="margin-top:14px"></div>
+  </section>
+
+  <section class="card">
+    <h2>Accounts</h2>
+    <table>
+      <thead><tr><th>Name</th><th class="hide-sm">Joined</th><th class="hide-sm">Last practice</th><th></th></tr></thead>
+      <tbody id="users"></tbody>
+    </table>
+  </section>
+
+</div>
+<script src="/static/app.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var meId = null;
+
+  function showLink(url, note) {
+    $("linkOut").hidden = false;
+    $("linkUrl").value = url;
+    $("linkNote").textContent = note;
+    $("linkUrl").select();
+  }
+
+  $("copyBtn").addEventListener("click", function () {
+    var v = $("linkUrl").value;
+    (navigator.clipboard ? navigator.clipboard.writeText(v) : Promise.reject()).then(function () {
+      Hub.toast("Copied. Send it to your friend.");
+    }).catch(function () { $("linkUrl").select(); document.execCommand("copy"); Hub.toast("Copied."); });
+  });
+
+  $("inviteBtn").addEventListener("click", function () {
+    Hub.api("POST", "/api/admin/invites", { note: $("note").value }).then(function (r) {
+      showLink(r.url, "Works once, for " + r.days + " days. Anyone with this link can create an account, so send it privately.");
+      $("note").value = "";
+      loadInvites();
+    }).catch(function (e) { Hub.toast(e.message); });
+  });
+
+  function loadInvites() {
+    return Hub.api("GET", "/api/admin/invites").then(function (list) {
+      var box = $("pending");
+      box.innerHTML = "";
+      if (!list.length) return;
+      var h = document.createElement("div");
+      h.className = "muted small";
+      h.textContent = "Unused invites:";
+      box.appendChild(h);
+      list.forEach(function (inv) {
+        var row = document.createElement("div");
+        row.className = "btn-row small";
+        row.style.cssText = "display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-top:1px solid var(--line)";
+        var t = document.createElement("span");
+        t.textContent = (inv.note || "(no note)") + " · expires " + inv.expires_at.slice(0, 10);
+        var b = document.createElement("button");
+        b.className = "btn small danger";
+        b.type = "button";
+        b.textContent = "Revoke";
+        Hub.armed(b, "Revoke?", function () {
+          Hub.api("DELETE", "/api/admin/invites/" + inv.id).then(loadInvites);
+        });
+        row.appendChild(t);
+        row.appendChild(b);
+        box.appendChild(row);
+      });
+    });
+  }
+
+  function loadUsers() {
+    return Hub.api("GET", "/api/admin/users").then(function (list) {
+      var tb = $("users");
+      tb.innerHTML = "";
+      list.forEach(function (u) {
+        var tr = document.createElement("tr");
+        if (!u.isActive) tr.className = "off";
+        var name = document.createElement("td");
+        name.textContent = u.displayName + " ";
+        var un = document.createElement("span");
+        un.className = "muted small mono";
+        un.textContent = u.username;
+        name.appendChild(un);
+        if (u.isAdmin) { var t = document.createElement("span"); t.className = "tag"; t.textContent = "admin"; name.appendChild(t); }
+        if (!u.isActive) { var t2 = document.createElement("span"); t2.className = "tag"; t2.textContent = "off"; name.appendChild(t2); }
+        var joined = document.createElement("td");
+        joined.className = "hide-sm muted small";
+        joined.textContent = u.createdAt.slice(0, 10);
+        var last = document.createElement("td");
+        last.className = "hide-sm muted small";
+        last.textContent = u.lastActive || "–";
+        var act = document.createElement("td");
+        act.className = "actions";
+        var reset = document.createElement("button");
+        reset.className = "btn small";
+        reset.type = "button";
+        reset.textContent = "Reset password";
+        reset.addEventListener("click", function () {
+          Hub.api("POST", "/api/admin/users/" + u.id + "/reset").then(function (r) {
+            showLink(r.url, "Password-reset link for " + u.displayName + ". Works once, for " + r.days + " days.");
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }).catch(function (e) { Hub.toast(e.message); });
+        });
+        act.appendChild(reset);
+        if (u.id !== meId) {
+          var tog = document.createElement("button");
+          tog.className = "btn small" + (u.isActive ? " danger" : "");
+          tog.type = "button";
+          tog.style.marginLeft = "6px";
+          tog.textContent = u.isActive ? "Turn off" : "Turn on";
+          var run = function () {
+            Hub.api("PUT", "/api/admin/users/" + u.id + "/active", { active: !u.isActive }).then(loadUsers)
+              .catch(function (e) { Hub.toast(e.message); });
+          };
+          if (u.isActive) Hub.armed(tog, "Sure?", run); else tog.addEventListener("click", run);
+          act.appendChild(tog);
+        }
+        tr.appendChild(name); tr.appendChild(joined); tr.appendChild(last); tr.appendChild(act);
+        tb.appendChild(tr);
+      });
+    });
+  }
+
+  Hub.setupTheme();
+  Hub.me().then(function (m) { meId = m.id; return Promise.all([loadUsers(), loadInvites()]); })
+    .catch(function (e) { Hub.toast(e.message); });
+})();
+</script>
+</body>
+</html>

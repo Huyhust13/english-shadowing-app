@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Log in · English Hub</title>
+<link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/icons/icon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#B4722E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body class="hub">
+<div class="auth-wrap">
+  <div class="auth-brand"><img src="/icons/icon.svg" alt=""><span>English Hub</span></div>
+  <form class="card auth-card" id="form">
+    <h1>Log in</h1>
+    <div class="field">
+      <label for="username">Username</label>
+      <input class="input" id="username" autocomplete="username" autocapitalize="off" spellcheck="false" required autofocus>
+    </div>
+    <div class="field">
+      <label for="password">Password</label>
+      <input class="input" id="password" type="password" autocomplete="current-password" required>
+    </div>
+    <p class="form-error" id="error" role="alert" hidden></p>
+    <button class="btn primary block" id="submit" type="submit">Log in</button>
+    <p class="muted small auth-foot">No account? English Hub is invite-only: ask the person who runs it for an invite link. Forgot your password? Ask them for a reset link.</p>
+  </form>
+</div>
+<script src="/static/app.js"></script>
+<script>
+(function () {
+  "use strict";
+  var form = document.getElementById("form");
+  var err = document.getElementById("error");
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    err.hidden = true;
+    var btn = document.getElementById("submit");
+    btn.disabled = true;
+    Hub.api("POST", "/api/auth/login", {
+      username: document.getElementById("username").value,
+      password: document.getElementById("password").value,
+      next: new URLSearchParams(location.search).get("next") || "/"
+    }).then(function (r) {
+      location.replace(r.next || "/");
+    }).catch(function (e2) {
+      err.textContent = e2.message;
+      err.hidden = false;
+      btn.disabled = false;
+    });
+  });
+})();
+</script>
+</body>
+</html>

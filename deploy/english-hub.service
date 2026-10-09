@@ -1,5 +1,5 @@
 [Unit]
-Description=English Hub (Today, Anki vocab, practice, shadowing)
+Description=English Hub (multi-user: Today, Anki vocab, practice, shadowing)
 After=network-online.target
 Wants=network-online.target
 
@@ -7,11 +7,12 @@ Wants=network-online.target
 Type=simple
 WorkingDirectory=__APP_DIR__
 Environment=PYTHONUNBUFFERED=1
-Environment=HOST=0.0.0.0
+Environment=HOST=127.0.0.1
 Environment=PORT=__PORT__
-Environment=SHADOWING_DB=__SHADOWING_DB__
-Environment=ANKI_DIR=__DATA_DIR__/anki
-ExecStart=__VENV__/bin/python __APP_DIR__/server.py
+Environment=DATA_DIR=__DATA_DIR__
+# PUBLIC_URL, TELEGRAM_BOT_TOKEN (and optionally SECRET_KEY) live here, mode 0600:
+EnvironmentFile=__ENV_FILE__
+ExecStart=__VENV__/bin/python -m hub
 Restart=on-failure
 RestartSec=5
 

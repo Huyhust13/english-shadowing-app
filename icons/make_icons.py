@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Draw the app icon: a speech waveform with its offset "shadow".
 
-Writes icon.svg (browser tab), icon-32.png (fallback favicon) and
-apple-touch-icon.png (phone home screen). Pure Python, no image libraries.
+Writes icon.svg (browser tab), icon-32.png (fallback favicon), apple-touch-icon.png
+(iPhone home screen) and icon-192/512.png (installed web app, Android). Pure Python,
+no image libraries.
 Usage: python3 icons/make_icons.py
 """
 import os
@@ -114,4 +115,6 @@ if __name__ == "__main__":
     write_svg(os.path.join(OUT_DIR, "icon.svg"))
     write_png(os.path.join(OUT_DIR, "icon-32.png"), render(32, rounded_bg=True))
     write_png(os.path.join(OUT_DIR, "apple-touch-icon.png"), render(180, rounded_bg=False))
-    print("Wrote icon.svg, icon-32.png, apple-touch-icon.png to", OUT_DIR)
+    write_png(os.path.join(OUT_DIR, "icon-192.png"), render(192, rounded_bg=False, samples=3))
+    write_png(os.path.join(OUT_DIR, "icon-512.png"), render(512, rounded_bg=False, samples=2))
+    print("Wrote icon.svg and the PNG icons to", OUT_DIR)

@@ -7,6 +7,7 @@
 <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
 <link rel="icon" href="/icons/icon-32.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#B4722E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -101,6 +102,7 @@
       <input class="input" type="email" id="loginUser" placeholder="AnkiWeb email" autocomplete="username" required>
       <input class="input" type="password" id="loginPass" placeholder="AnkiWeb password" autocomplete="current-password" required>
       <button class="btn primary small" type="submit">Log in</button>
+      <p class="muted small" style="margin:2px 0 0;width:100%">Use your own AnkiWeb account (free at ankiweb.net). Only a sync key is kept on the server, never your password. Vocab is optional: skip it if you don't use Anki.</p>
     </form>
   </section>
 
@@ -210,6 +212,8 @@
     var doc = new DOMParser().parseFromString("<body>" + html.replace(/\[sound:[^\]]*\]/g, "") + "</body>", "text/html");
     return doc.body.textContent.replace(/\s+/g, " ").trim();
   }
+  // Per-user media URL (carries a secret key, since the card frame can't send our cookie).
+  function mediaBase() { return (state && state.mediaBase) || "/anki-media/-/"; }
   function getStoredDeck() { try { return localStorage.getItem(DECK_KEY); } catch (e) { return null; } }
   function setStoredDeck(id) { try { localStorage.setItem(DECK_KEY, String(id)); } catch (e) {} }
 
@@ -360,7 +364,7 @@
   function cardDoc(html, ord) {
     return '<!doctype html><html><head><meta charset="utf-8">' +
       '<meta name="viewport" content="width=device-width,initial-scale=1">' +
-      '<base href="' + location.origin + '/anki-media/">' +
+      '<base href="' + location.origin + mediaBase() + '">' +
       "<style>html,body{margin:0}body{padding:16px;overflow-wrap:break-word;box-sizing:border-box}" +
       ".replay-button{display:inline-block;vertical-align:middle;margin:4px}img{max-width:100%;height:auto}" +
       "input#typeans{width:min(92%,560px);box-sizing:border-box;margin:10px 0;padding:10px 14px;font-size:1.15em;" +
@@ -421,7 +425,7 @@
       speechSynthesis.speak(u);
       return;
     }
-    audio = new Audio("/anki-media/" + encodeURIComponent(item.file));
+    audio = new Audio(mediaBase() + encodeURIComponent(item.file));
     audio.onended = function () { then && then(); };
     audio.onerror = function () { then && then(); };
     audio.play().catch(function () { /* autoplay blocked until the first click; the replay button still works */ });

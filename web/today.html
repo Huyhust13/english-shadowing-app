@@ -7,6 +7,7 @@
 <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
 <link rel="icon" href="/icons/icon-32.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
 <meta name="apple-mobile-web-app-title" content="English Hub">
 <meta name="theme-color" content="#B4722E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -64,7 +65,7 @@
   <section class="card streak-card">
     <div class="streak-big mono" id="fullStreak">0</div>
     <div class="streak-copy">
-      <div class="label">day streak, all three done</div>
+      <div class="label" id="fullStreakLabel">day streak, all three done</div>
       <div class="sub" id="fullStreakSub">Vocab, practice and shadowing on the same day.</div>
     </div>
   </section>
@@ -79,7 +80,7 @@
       <div class="act-detail" id="vocabDetail">Loading…</div>
       <div class="act-foot">
         <span class="act-streak" id="vocabStreak"></span>
-        <a class="btn primary small" href="/vocab#study">Study</a>
+        <a class="btn primary small" href="/vocab#study" id="vocabBtn">Study</a>
       </div>
     </article>
 
@@ -126,12 +127,17 @@
 
   function plural(n, word) { return n + " " + word + (n === 1 ? "" : "s"); }
 
+  // Vocab only counts for people who connected AnkiWeb; it's optional.
+  function habits() {
+    return data && data.ankiConnected ? ["vocab", "practice", "shadow"] : ["practice", "shadow"];
+  }
+
   function done(kind, iso) {
     if (!data) return false;
     if (kind === "vocab") return (data.anki[iso] || 0) > 0;
     if (kind === "practice") return Object.prototype.hasOwnProperty.call(data.practice, iso);
     if (kind === "shadow") return (data.shadow[iso] || 0) > 0;
-    return done("vocab", iso) && done("practice", iso) && done("shadow", iso);
+    return habits().every(function (k) { return done(k, iso); });
   }
 
   function streakText(kind) {
@@ -143,15 +149,21 @@
     var t = Hub.todayISO();
     document.getElementById("todayDate").textContent = Hub.dateLabel(t, { weekday: "long", month: "long", day: "numeric" });
     var h = new Date().getHours();
-    document.getElementById("greeting").textContent = h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+    var hello = h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+    document.getElementById("greeting").textContent = hello;
+    Hub.me().then(function (m) {
+      document.getElementById("greeting").textContent = hello + ", " + m.displayName.split(" ")[0];
+    }).catch(function () {});
 
     // Full-day streak
     var full = Hub.streak(function (iso) { return done("full", iso); });
     document.getElementById("fullStreak").textContent = String(full);
-    var left = ["vocab", "practice", "shadow"].filter(function (k) { return !done(k, t); });
+    document.getElementById("fullStreakLabel").textContent = data.ankiConnected
+      ? "day streak, all three done" : "day streak, practice and shadowing done";
+    var left = habits().filter(function (k) { return !done(k, t); });
     var names = { vocab: "vocab", practice: "practice", shadow: "shadowing" };
     document.getElementById("fullStreakSub").textContent = left.length === 0
-      ? "All three done today. See you tomorrow!"
+      ? "All done today. See you tomorrow!"
       : "Still to do today: " + left.map(function (k) { return names[k]; }).join(", ") + ".";
 
     // Vocab
@@ -159,12 +171,19 @@
     document.getElementById("actVocab").setAttribute("data-done", reviews > 0 ? "1" : "0");
     document.getElementById("vocabStat").innerHTML = reviews + "<small>reviewed today</small>";
     var vd = document.getElementById("vocabDetail");
+    var vbtn = document.getElementById("vocabBtn");
+    vbtn.textContent = data.ankiConnected ? "Study" : "Connect";
+    vbtn.href = data.ankiConnected ? "/vocab#study" : "/vocab";
     if (!data.ankiAvailable) vd.textContent = "Anki isn't available: " + (data.ankiError || "not set up");
+    else if (!data.ankiConnected) {
+      document.getElementById("vocabStat").innerHTML = "Optional<small>not connected</small>";
+      vd.textContent = "Connect your own AnkiWeb account to study your decks here and count reviews.";
+    }
     else if (due === null) vd.textContent = "Checking what's due…";
     else vd.textContent = due.total === 0
       ? "Nothing due right now. " + (due.synced ? "Synced " + due.synced + "." : "")
       : plural(due.review, "review") + ", " + due.learn + " learning, " + due.new + " new still due.";
-    document.getElementById("vocabStreak").textContent = streakText("vocab");
+    document.getElementById("vocabStreak").textContent = data.ankiConnected ? streakText("vocab") : "";
 
     // Practice
     var practiced = done("practice", t);
@@ -190,7 +209,8 @@
   function renderGrid() {
     var grid = document.getElementById("grid14");
     grid.innerHTML = "";
-    var rows = [["vocab", "Vocab"], ["practice", "Practice"], ["shadow", "Shadowing"], ["full", "All three"]];
+    var rows = [["vocab", "Vocab"], ["practice", "Practice"], ["shadow", "Shadowing"], ["full", "All done"]];
+    if (!data.ankiConnected) rows.shift();
     rows.forEach(function (r) {
       var lbl = document.createElement("div");
       lbl.className = "rlabel";
@@ -228,6 +248,7 @@
   }
 
   function loadDue() {
+    if (data && !data.ankiConnected) return Promise.resolve();
     return Hub.api("GET", "/api/anki/decks").then(function (decks) {
       var top = decks.filter(function (d) { return d.depth === 0; });
       due = { new: 0, learn: 0, review: 0 };
@@ -252,13 +273,12 @@
   });
 
   Hub.setupTheme();
-  loadSummary().catch(function (e) {
+  loadSummary().then(loadDue).catch(function (e) {
     document.getElementById("fullStreakSub").textContent = "Couldn't reach the server: " + e.message;
   });
-  loadDue();
   // Refresh when coming back to the tab (e.g. after studying on another device).
   document.addEventListener("visibilitychange", function () {
-    if (document.visibilityState === "visible") { loadSummary(); loadDue(); }
+    if (document.visibilityState === "visible") loadSummary().then(loadDue);
   });
 })();
 </script>

@@ -1,1 +1,4 @@
+flask>=3.0,<4
+waitress>=3.0,<4
+pywebpush>=2.0,<3
 anki>=25.2

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Join · English Hub</title>
+<link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/icons/icon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#B4722E">
+<meta name="referrer" content="no-referrer">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body class="hub">
+<div class="auth-wrap">
+  <div class="auth-brand"><img src="/icons/icon.svg" alt=""><span>English Hub</span></div>
+
+  <div class="card auth-card" id="loading"><p class="muted">Checking your link…</p></div>
+
+  <div class="card auth-card" id="bad" hidden>
+    <h1>Link not valid</h1>
+    <p class="muted" id="badMsg"></p>
+    <a class="btn block" href="/login">Go to log in</a>
+  </div>
+
+  <form class="card auth-card" id="form" hidden>
+    <h1 id="title">Create your account</h1>
+    <p class="muted small" id="intro">You've been invited to English Hub: a daily habit tracker for vocab (Anki), sentence practice and shadowing. Your log is private to you.</p>
+    <div id="inviteFields">
+      <div class="field">
+        <label for="displayName">Your name</label>
+        <input class="input" id="displayName" autocomplete="name" maxlength="60">
+      </div>
+      <div class="field">
+        <label for="username">Username <span class="muted">(for logging in; lowercase, no spaces)</span></label>
+        <input class="input" id="username" autocomplete="username" autocapitalize="off" spellcheck="false" maxlength="32" pattern="[a-z0-9][a-z0-9_.\-]{1,31}">
+      </div>
+    </div>
+    <div class="field" id="resetUser" hidden>
+      <label>Account</label>
+      <div class="mono" id="resetUsername"></div>
+    </div>
+    <div class="field">
+      <label for="password">Password <span class="muted">(at least 8 characters)</span></label>
+      <input class="input" id="password" type="password" autocomplete="new-password" minlength="8" required>
+    </div>
+    <p class="form-error" id="error" role="alert" hidden></p>
+    <button class="btn primary block" id="submit" type="submit">Create account</button>
+  </form>
+</div>
+<script src="/static/app.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var token = location.pathname.split("/").pop();
+  var kind = null;
+  var tz = "";
+  try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (e) {}
+
+  Hub.api("GET", "/api/auth/link/" + encodeURIComponent(token)).then(function (info) {
+    kind = info.kind;
+    $("loading").hidden = true;
+    $("form").hidden = false;
+    if (kind === "reset") {
+      $("title").textContent = "Set a new password";
+      $("intro").textContent = "Choose a new password. You'll be logged out on your other devices.";
+      $("inviteFields").hidden = true;
+      $("resetUser").hidden = false;
+      $("resetUsername").textContent = info.username;
+      $("submit").textContent = "Save password";
+      $("password").focus();
+    } else {
+      $("displayName").required = true;
+      $("username").required = true;
+      $("displayName").focus();
+    }
+  }).catch(function (e) {
+    $("loading").hidden = true;
+    $("bad").hidden = false;
+    $("badMsg").textContent = e.message;
+  });
+
+  // Suggest a username from the name.
+  $("displayName").addEventListener("input", function () {
+    if ($("username").getAttribute("data-touched")) return;
+    $("username").value = this.value.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+      .replace(/đ/g, "d").replace(/[^a-z0-9]+/g, ".").replace(/^\.+|\.+$/g, "").slice(0, 32);
+  });
+  $("username").addEventListener("input", function () { this.setAttribute("data-touched", "1"); });
+
+  $("form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    $("error").hidden = true;
+    $("submit").disabled = true;
+    var body = { password: $("password").value };
+    if (kind === "invite") {
+      body.displayName = $("displayName").value;
+      body.username = $("username").value;
+      body.timezone = tz;
+    }
+    Hub.api("POST", "/api/auth/link/" + encodeURIComponent(token), body).then(function (r) {
+      location.replace(r.next || "/");
+    }).catch(function (e2) {
+      $("error").textContent = e2.message;
+      $("error").hidden = false;
+      $("submit").disabled = false;
+    });
+  });
+})();
+</script>
+</body>
+</html>

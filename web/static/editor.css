@@ -1,0 +1,62 @@
+/* Rich-text notes editor and rendered notes (see editor.js). Uses the page's colour tokens. */
+.editor {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  overflow: hidden;
+}
+.editor:focus-within { border-color: var(--accent); }
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 5px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-2);
+}
+.toolbar .sep { width: 1px; background: var(--line); margin: 3px 4px; }
+.tool-btn {
+  min-width: 32px;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.tool-btn:hover { background: var(--surface); border-color: var(--line); }
+.tool-btn[aria-pressed="true"] { background: var(--surface); border-color: var(--accent); color: var(--accent); }
+.tool-mark { background: color-mix(in srgb, var(--accent) 35%, transparent); color: inherit; padding: 0 3px; }
+.notes-input {
+  min-height: 220px;
+  max-height: 70vh;
+  overflow-y: auto;
+  resize: vertical;
+  padding: 12px 14px;
+  color: var(--text);
+  font-size: 0.95rem;
+  line-height: 1.65;
+  outline: none;
+}
+.notes-input.is-empty::before {
+  content: attr(data-placeholder);
+  color: var(--muted);
+  pointer-events: none;
+}
+.rich p, .rich div { margin: 0; }
+.rich ul, .rich ol { margin: 4px 0; padding-left: 1.5em; }
+.rich mark { background: color-mix(in srgb, var(--accent) 35%, transparent); color: inherit; padding: 0 1px; border-radius: 2px; }
+.rich.clamped { max-height: 9.6em; overflow: hidden; -webkit-mask-image: linear-gradient(#000 60%, transparent); mask-image: linear-gradient(#000 60%, transparent); }
+.more-btn {
+  border: none;
+  background: none;
+  padding: 2px 0;
+  margin-top: 2px;
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 0.76rem;
+  cursor: pointer;
+}

@@ -86,7 +86,7 @@ def set_practice(conn, user_id, date, done, note=""):
             conn.execute(
                 "INSERT INTO practice_days (user_id, date, note, markedAt) VALUES (?, ?, ?, datetime('now'))"
                 " ON CONFLICT(user_id, date) DO UPDATE SET note = excluded.note",
-                (user_id, date, str(note or "")[:20000]))
+                (user_id, date, str(note or "")[:200000]))
         else:
             conn.execute("DELETE FROM practice_days WHERE user_id = ? AND date = ?", (user_id, date))
 

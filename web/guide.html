@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Guide · English Hub</title>
+<link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/icons/icon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#B4722E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/app.css">
+<style>
+  .guide { line-height: 1.65; font-size: 0.95rem; }
+  .guide h2 { font-size: 1.15rem; color: var(--text); margin: 0 0 10px; font-weight: 700; scroll-margin-top: 70px; }
+  .guide h3 { font-size: 0.98rem; margin: 18px 0 6px; }
+  .guide p { margin: 0 0 10px; }
+  .guide ul, .guide ol { margin: 0 0 10px; padding-left: 1.4em; }
+  .guide li { margin-bottom: 4px; }
+  .guide li::marker { color: var(--accent); }
+  .toc { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+  .toc a { font-size: 0.8rem; padding: 6px 11px; border-radius: 99px; background: var(--surface); border: 1px solid var(--line); text-decoration: none; color: var(--muted) !important; }
+  .toc a:hover { border-color: var(--accent); color: var(--accent) !important; }
+  .routine { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 6px 0 12px; }
+  @media (max-width: 680px) { .routine { grid-template-columns: 1fr; } }
+  .step { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; background: var(--bg); }
+  .step .n { font-size: 0.72rem; color: var(--muted); }
+  .step .t { font-weight: 700; margin: 2px 0 2px; }
+  .step .m { font-family: 'JetBrains Mono', ui-monospace, monospace; color: var(--accent); font-size: 0.85rem; }
+  .step p { font-size: 0.84rem; color: var(--muted); margin: 6px 0 0; }
+  .prompt { position: relative; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin: 8px 0 14px; font-size: 0.86rem; white-space: pre-wrap; }
+  .prompt .copy { position: absolute; top: 8px; right: 8px; }
+  .prompt-title { font-weight: 600; font-size: 0.88rem; margin-top: 14px; }
+  .tip { border-left: 3px solid var(--accent); background: var(--surface-2); border-radius: 0 8px 8px 0; padding: 10px 14px; margin: 10px 0 12px; font-size: 0.88rem; }
+  .guide table { width: 100%; border-collapse: collapse; font-size: 0.86rem; margin: 6px 0 12px; }
+  .guide th, .guide td { text-align: left; padding: 7px 8px 7px 0; border-top: 1px solid var(--line); vertical-align: top; }
+  .guide th { font-size: 0.74rem; color: var(--muted); border-top: none; }
+</style>
+</head>
+<body class="hub">
+<nav id="appNav"></nav>
+<div class="wrap guide">
+
+  <header class="page-head">
+    <div>
+      <h1>How to use English Hub</h1>
+      <p>A short daily routine that builds vocabulary, accuracy and natural speaking, plus how to get the most out of each part.</p>
+    </div>
+    <button class="theme-btn" id="themeToggle" type="button">Dark</button>
+  </header>
+
+  <nav class="toc" aria-label="On this page">
+    <a href="#routine">Daily routine</a>
+    <a href="#vocab">1 · Vocab</a>
+    <a href="#practice">2 · Practice</a>
+    <a href="#shadowing">3 · Shadowing</a>
+    <a href="#streak">Streak &amp; reminders</a>
+    <a href="#weekly">Weekly review</a>
+    <a href="#phone">On your phone</a>
+    <a href="#faq">FAQ</a>
+  </nav>
+
+  <section class="card" id="routine">
+    <h2>The daily routine (20–30 minutes)</h2>
+    <p>Small and daily beats long and rare. Twenty minutes every day for three months will change your English more than a weekend course. English Hub tracks three habits that train different skills:</p>
+    <div class="routine">
+      <div class="step"><div class="n">1 · Vocab</div><div class="t">Anki reviews</div><div class="m">5–10 min</div><p>Remember words for the long term with spaced repetition.</p></div>
+      <div class="step"><div class="n">2 · Practice</div><div class="t">Write &amp; say sentences</div><div class="m">10 min</div><p>Use grammar and new words actively, and get corrected.</p></div>
+      <div class="step"><div class="n">3 · Shadowing</div><div class="t">Copy a native speaker</div><div class="m">10 min</div><p>Train pronunciation, rhythm, stress and fluency.</p></div>
+    </div>
+    <p><b>A good order:</b> do Vocab first (it's easy to start), then Practice using today's new words, then Shadowing when your voice is warmed up. Any order is fine; what matters is that all of them get done.</p>
+    <div class="tip">No time today? Do the <b>minimum</b>: clear your due Anki cards, write 3 sentences, and shadow one clip 3 times. Ten minutes keeps the habit (and the streak) alive.</div>
+  </section>
+
+  <section class="card" id="vocab">
+    <h2>1 · Vocab with Anki</h2>
+    <p>Anki shows you each word just before you'd forget it, so a few minutes a day is enough to keep thousands of words.</p>
+    <h3>Set up (once)</h3>
+    <ol>
+      <li>Create a free account at <a href="https://ankiweb.net" target="_blank" rel="noopener">ankiweb.net</a>.</li>
+      <li>On the <a href="/vocab">Vocab</a> page, log in with that account. Your decks sync here, to Anki desktop and to AnkiDroid (free on Android).</li>
+      <li>No decks yet? New cards you add here go to <b>My Words</b>. You can also download a shared deck in Anki desktop (for example an IELTS or "4000 Essential English Words" deck).</li>
+    </ol>
+    <h3>Every day</h3>
+    <ul>
+      <li>Open <a href="/vocab#study">Vocab → Study</a> and clear the cards that are due. Be honest with the buttons: <b>Again</b> if you didn't know it. Shortcuts: <b>Space</b> to show the answer, <b>1–4</b> to answer.</li>
+      <li>Add <b>5–10 new words</b> a day, not more. Too many new cards means a huge review pile next week.</li>
+      <li>Make good cards: the word, its meaning, <b>one example sentence</b> from where you met it, and the pronunciation (audio or IPA).</li>
+    </ul>
+    <div class="tip">Best source of new words: your own Shadowing scripts and the corrections you get in Practice. Words you've met in context stick much better than words from a list.</div>
+  </section>
+
+  <section class="card" id="practice">
+    <h2>2 · Sentence practice with an AI tutor</h2>
+    <p>Reading and listening build understanding; <b>producing</b> sentences builds accuracy. Use any AI chat (Claude, ChatGPT, Gemini…) as a patient tutor, then keep the useful parts on the <a href="/practice">Practice</a> page.</p>
+    <h3>How</h3>
+    <ol>
+      <li>Open your AI chat and paste one of the prompts below.</li>
+      <li>Write (or say, with voice input) your sentences. Try to use words from today's Anki cards.</li>
+      <li>Copy the corrections that matter into your Practice note: your sentence, the corrected one, and why. Use <b>highlight</b> for the mistake and <b>bold</b> for the better phrase.</li>
+      <li>Press <b>Mark today's practice done</b>. Come back later and press <b>Save note</b> if you add more.</li>
+    </ol>
+
+    <div class="prompt-title">Correct my sentences</div>
+    <div class="prompt" data-prompt>You are my English tutor. My level is about IELTS 6.0 and I want to reach band 7. I will send you sentences. For each one: (1) give the corrected version, (2) explain each mistake in one short line, (3) give a more natural way a native speaker would say it. Keep it short. Then give me one similar sentence to translate or rewrite, so I practise the same point.</div>
+
+    <div class="prompt-title">Speaking reflex drill</div>
+    <div class="prompt" data-prompt>Let's do an IELTS speaking drill. Ask me one Part 1 question at a time on everyday topics (home, work, study, hobbies, food, travel). I'll answer in 2–4 sentences. After each answer: correct my mistakes briefly, suggest one better word or phrase, give me a band estimate, then ask the next question. After 5 questions, move to a Part 2 cue card.</div>
+
+    <div class="prompt-title">Use today's words</div>
+    <div class="prompt" data-prompt>Here are words I'm learning today: [paste 5–10 words]. For each word, give me one short example sentence and a common collocation. Then ask me to write my own sentence with each word, and correct them one by one.</div>
+
+    <div class="prompt-title">Find my patterns (once a week)</div>
+    <div class="prompt" data-prompt>Here are my practice notes from this week: [paste]. List my 3 most common mistake types (e.g. articles, tenses, prepositions), with one example of each, and give me a 5-minute exercise for the most important one.</div>
+  </section>
+
+  <section class="card" id="shadowing">
+    <h2>3 · Shadowing</h2>
+    <p>Shadowing means playing a short clip of a native speaker and speaking <b>along with it</b>, copying not just the words but the <b>rhythm, stress, intonation and linking</b>. It's the fastest way to sound natural.</p>
+    <h3>Choose a clip</h3>
+    <ul>
+      <li><b>1–3 minutes</b> long, at your level (you understand about 80% without subtitles), <b>with a transcript</b>.</li>
+      <li>Good sources: BBC Learning English (<i>6 Minute English</i>), TED / TED-Ed talks, YouTube videos with good captions, podcasts with transcripts. Choose a voice you'd like to sound like.</li>
+      <li>Keep the same clip for 2–3 days. Repetition is the point.</li>
+    </ul>
+    <h3>Step by step (about 10 minutes)</h3>
+    <ol>
+      <li><b>Listen</b> twice without reading. Just get the meaning.</li>
+      <li><b>Read the script</b> while listening. Paste it into the notes on the <a href="/shadowing">Shadowing</a> page. <b>Highlight</b> stressed words, mark linking (<i>check‿it‿out</i>) and pauses ( / ).</li>
+      <li><b>Shadow with the script</b>, 3–5 times. Speak at the same time as the speaker, or half a second behind. Slow the video to 0.75× at first if you need to.</li>
+      <li><b>Shadow without the script</b>, 2–3 times, at normal speed.</li>
+      <li><b>Record yourself</b> once (your phone's voice recorder is fine) and compare with the original. What sounds different?</li>
+      <li><b>Log it:</b> clip link (the title fills in automatically), number of reps, how it felt (<i>Rough / OK / Smooth</i>), and notes on what was hard.</li>
+    </ol>
+    <div class="tip">Write down <i>what</i> was hard, not just "difficult": "stress on <b>auTOnomous</b>", "linking in <i>a lot of</i>", "too slow in the second sentence". That's what you'll fix next time, and how you'll see your progress.</div>
+  </section>
+
+  <section class="card" id="streak">
+    <h2>Streak &amp; reminders</h2>
+    <ul>
+      <li>The <a href="/">Today</a> page shows what's left today and your <b>streak</b>: the number of days in a row with every habit done. Vocab only counts if you connected AnkiWeb.</li>
+      <li>Today not done <i>yet</i> doesn't break the streak: it counts from yesterday until midnight.</li>
+      <li>Set a <b>daily reminder</b> in <a href="/settings">Settings</a>, by Telegram, by phone notification, or both. It only arrives on days you haven't finished, at your own time and in your own timezone.</li>
+      <li>Forgot to log yesterday? You can still edit past days: on <a href="/shadowing">Shadowing</a> (Edit → change the date) and <a href="/practice">Practice</a> (Edit in the history).</li>
+      <li>Missed a day? Start again. The habit matters more than the number.</li>
+    </ul>
+  </section>
+
+  <section class="card" id="weekly">
+    <h2>Weekly review (15 minutes, e.g. Sunday)</h2>
+    <ol>
+      <li>Read this week's <a href="/practice">Practice</a> notes. Paste them into the "Find my patterns" prompt above.</li>
+      <li>Shadow your favourite clip of the week once more, without the script. Notice how much easier it is.</li>
+      <li>Add the 5 most useful phrases from your notes to Anki.</li>
+      <li>Pick next week's clip.</li>
+    </ol>
+  </section>
+
+  <section class="card" id="phone">
+    <h2>On your phone</h2>
+    <ul>
+      <li><b>iPhone / iPad (Safari):</b> tap <b>Share</b> → <b>Add to Home Screen</b>. Open English Hub from the new icon. Notifications only work in this home-screen app (iOS 16.4 or newer).</li>
+      <li><b>Android (Chrome):</b> menu ⋮ → <b>Add to Home screen</b> / <b>Install app</b>.</li>
+      <li>Then turn on reminders in <a href="/settings">Settings</a> and press <b>Send a test reminder</b>.</li>
+    </ul>
+  </section>
+
+  <section class="card" id="faq">
+    <h2>FAQ</h2>
+    <h3>Who can see my notes?</h3>
+    <p>Only you. Each account is private; even the admin only sees names and when people last practised.</p>
+    <h3>Is my AnkiWeb password stored?</h3>
+    <p>No. Only a sync key is kept, like Anki desktop does. You can disconnect in Settings.</p>
+    <h3>Forgot my password?</h3>
+    <p>Ask the person who invited you for a reset link.</p>
+    <h3>Can I keep a copy of my data?</h3>
+    <p>Yes: <a href="/settings">Settings</a> → <b>Download my data</b>.</p>
+  </section>
+
+</div>
+<script src="/static/app.js"></script>
+<script>
+(function () {
+  "use strict";
+  // Copy buttons for the AI prompts.
+  document.querySelectorAll("[data-prompt]").forEach(function (box) {
+    var text = box.textContent;
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "btn small copy";
+    btn.textContent = "Copy";
+    btn.addEventListener("click", function () {
+      var done = function () { Hub.toast("Prompt copied. Paste it into your AI chat."); };
+      if (navigator.clipboard) navigator.clipboard.writeText(text).then(done, function () { Hub.toast("Select the text and copy it."); });
+      else Hub.toast("Select the text and copy it.");
+    });
+    box.style.paddingTop = "40px";
+    box.appendChild(btn);
+  });
+  Hub.setupTheme();
+})();
+</script>
+</body>
+</html>

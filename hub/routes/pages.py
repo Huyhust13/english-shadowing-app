@@ -15,8 +15,9 @@ from ..security import admin_required, login_required
 bp = Blueprint("pages", __name__)
 
 PRIVATE_PAGES = {"/": "today.html", "/today": "today.html", "/vocab": "vocab.html",
-                 "/practice": "practice.html", "/shadowing": "shadowing.html", "/settings": "settings.html"}
-STATIC = {"app.css", "app.js"}
+                 "/practice": "practice.html", "/shadowing": "shadowing.html", "/settings": "settings.html",
+                 "/guide": "guide.html"}
+STATIC = {"app.css", "app.js", "editor.css", "editor.js"}
 ICONS = {"icon.svg", "icon-32.png", "icon-192.png", "icon-512.png", "apple-touch-icon.png"}
 
 

@@ -13,22 +13,30 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/app.css">
+<link rel="stylesheet" href="/static/editor.css">
 <style>
   .tick-card { display: flex; flex-direction: column; gap: 12px; }
   .tick-card[data-done="1"] { border-color: var(--success); box-shadow: inset 0 0 0 1px var(--success); }
-  .tick-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-  .tick-state { font-weight: 600; }
+  .tick-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .tick-head h2 { margin: 0; }
+  .tick-state { font-weight: 600; font-size: 0.88rem; color: var(--success); }
   .streak-inline { color: var(--muted); font-size: 0.85rem; }
+  .note-label { font-size: 0.78rem; color: var(--muted); }
+  .tick-card .notes-input { min-height: 160px; max-height: 55vh; }
+  .actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .dirty { font-size: 0.78rem; color: var(--muted); }
   .coming { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
   @media (max-width: 620px) { .coming { grid-template-columns: 1fr; } }
   .mode { border: 1px dashed var(--line); border-radius: 12px; padding: 14px 16px; }
   .mode h3 { margin: 0 0 4px; font-size: 0.92rem; }
   .mode p { margin: 0; font-size: 0.82rem; color: var(--muted); }
   .badge { display: inline-block; font-size: 0.68rem; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: var(--surface-2); color: var(--muted); margin-left: 6px; vertical-align: 2px; }
-  .hist-item { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 0.86rem; }
+  .hist-item { display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 0.88rem; }
   .hist-item:last-child { border-bottom: none; }
-  .hist-item .d { width: 70px; flex-shrink: 0; color: var(--muted); font-size: 0.74rem; padding-top: 2px; }
-  .hist-item .n { white-space: pre-wrap; }
+  .hist-item .d { width: 70px; flex-shrink: 0; color: var(--muted); font-size: 0.74rem; padding-top: 3px; }
+  .hist-item .body { flex: 1; min-width: 0; line-height: 1.6; }
+  .hist-item .empty-note { color: var(--muted); font-style: italic; }
+  .hist-item .edit { flex-shrink: 0; align-self: flex-start; }
 </style>
 </head>
 <body class="hub">
@@ -38,33 +46,24 @@
   <header class="page-head">
     <div>
       <h1>Sentence practice</h1>
-      <p>Practise writing and saying English sentences with an AI tutor (Claude, Gemini…).</p>
+      <p>Practise writing and saying English sentences with an AI tutor, then keep your notes here. <a href="/guide#practice">How?</a></p>
     </div>
     <button class="theme-btn" id="themeToggle" type="button">Dark</button>
   </header>
 
   <section class="card tick-card" id="tickCard">
-    <h2 style="margin:0">Today</h2>
-    <div class="tick-row">
+    <div class="tick-head">
+      <h2 id="editHeading">Today</h2>
+      <div><span class="tick-state" id="tickState"></span> <span class="streak-inline" id="streakInline"></span></div>
+    </div>
+    <div class="note-label" id="noteLabel">What did you practise? Sentences you wrote, corrections you got, phrases to remember (optional)</div>
+    <div id="noteEditor"></div>
+    <div class="actions">
       <button class="btn success" id="tickBtn" type="button">Mark today's practice done</button>
-      <span class="tick-state" id="tickState"></span>
-      <span class="streak-inline" id="streakInline"></span>
-    </div>
-    <div class="field" style="margin:0">
-      <label for="noteInput">What did you practise? (optional, e.g. "10 sentences with present perfect, IELTS Part 1 about hometown")</label>
-      <textarea id="noteInput" rows="3" placeholder="Sentences you wrote, corrections you got, phrases to remember…"></textarea>
-    </div>
-    <div><button class="btn small" id="saveNoteBtn" type="button" hidden>Save note</button></div>
-  </section>
-
-  <section class="card">
-    <h2>Coming here <span class="badge">placeholder</span></h2>
-    <p class="muted small" style="margin-top:-4px">For now, practise in your AI chat of choice and tick it off above. These modes will live on this page once the AI is connected:</p>
-    <div class="coming">
-      <div class="mode"><h3>Correct my sentence</h3><p>Corrected version, why, and a more natural, band-7 way to say it.</p></div>
-      <div class="mode"><h3>Reflex drill</h3><p>The tutor asks an IELTS Part 1–3 question; answer quickly, get feedback.</p></div>
-      <div class="mode"><h3>Use today's words</h3><p>Build sentences with words from today's Anki reviews.</p></div>
-      <div class="mode"><h3>Mistake log</h3><p>Your recurring errors (articles, tenses, prepositions…) over time.</p></div>
+      <button class="btn" id="saveNoteBtn" type="button" hidden>Save note</button>
+      <button class="btn danger" id="undoBtn" type="button" hidden>Undo done</button>
+      <button class="btn" id="backToday" type="button" hidden>Back to today</button>
+      <span class="dirty" id="dirty"></span>
     </div>
   </section>
 
@@ -73,28 +72,66 @@
     <div id="history"></div>
   </section>
 
+  <section class="card">
+    <h2>Coming here <span class="badge">placeholder</span></h2>
+    <p class="muted small" style="margin-top:-4px">For now, practise in your AI chat of choice (the <a href="/guide#practice">guide</a> has prompts to copy) and log it above. These modes will live on this page once the AI is connected:</p>
+    <div class="coming">
+      <div class="mode"><h3>Correct my sentence</h3><p>Corrected version, why, and a more natural, band-7 way to say it.</p></div>
+      <div class="mode"><h3>Reflex drill</h3><p>The tutor asks an IELTS Part 1–3 question; answer quickly, get feedback.</p></div>
+      <div class="mode"><h3>Use today's words</h3><p>Build sentences with words from today's Anki reviews.</p></div>
+      <div class="mode"><h3>Mistake log</h3><p>Your recurring errors (articles, tenses, prepositions…) over time.</p></div>
+    </div>
+  </section>
+
 </div>
+<script src="/static/editor.js"></script>
 <script src="/static/app.js"></script>
 <script>
 (function () {
   "use strict";
-  var practice = {};
+  var $ = function (id) { return document.getElementById(id); };
+  var practice = {};          // { 'YYYY-MM-DD': note }
+  var editingDate = null;     // the day shown in the editor (today unless editing an older day)
+  var savedNote = "";         // what the server has for editingDate, to spot unsaved changes
+
+  var editor = RichText.mount($("noteEditor"), {
+    labelledBy: "noteLabel",
+    placeholder: "e.g. 10 sentences with the present perfect. I have lived here since 2020 (not: I live here since 2020)…",
+    onInput: function () { renderDirty(); }
+  });
+
+  function has(iso) { return Object.prototype.hasOwnProperty.call(practice, iso); }
+  function isDirty() { return editor.get() !== savedNote; }
+  function renderDirty() { $("dirty").textContent = has(editingDate) && isDirty() ? "Unsaved changes" : ""; }
+
+  function loadEditor(iso) {
+    editingDate = iso;
+    savedNote = has(iso) ? (practice[iso] || "") : "";
+    // Keep a draft typed before ticking today; otherwise show the saved note.
+    if (has(iso) || iso !== Hub.todayISO()) editor.set(savedNote);
+    render();
+  }
 
   function render() {
     var t = Hub.todayISO();
-    var isDone = Object.prototype.hasOwnProperty.call(practice, t);
-    document.getElementById("tickCard").setAttribute("data-done", isDone ? "1" : "0");
-    var btn = document.getElementById("tickBtn");
-    btn.textContent = isDone ? "Undo" : "Mark today's practice done";
-    btn.className = isDone ? "btn" : "btn success";
-    document.getElementById("tickState").textContent = isDone ? "✓ Done today" : "";
-    document.getElementById("saveNoteBtn").hidden = !isDone;
-    var note = document.getElementById("noteInput");
-    if (document.activeElement !== note) note.value = isDone ? practice[t] : note.value;
-    var n = Hub.streak(function (iso) { return Object.prototype.hasOwnProperty.call(practice, iso); });
-    document.getElementById("streakInline").textContent = n ? "🔥 " + n + " day streak" : "";
+    var isToday = editingDate === t;
+    var isDone = has(editingDate);
+    $("tickCard").setAttribute("data-done", isDone ? "1" : "0");
+    $("editHeading").textContent = isToday ? "Today" : "Editing " + Hub.dateLabel(editingDate, { weekday: "short", month: "short", day: "numeric" });
+    $("tickState").textContent = isDone ? "✓ Done" : "";
+    $("tickBtn").hidden = isDone;
+    $("tickBtn").textContent = isToday ? "Mark today's practice done" : "Mark this day done";
+    $("saveNoteBtn").hidden = !isDone;
+    $("undoBtn").hidden = !isDone;
+    $("backToday").hidden = isToday;
+    var n = Hub.streak(function (iso) { return has(iso); });
+    $("streakInline").textContent = n ? "🔥 " + n + " day streak" : "";
+    renderDirty();
+    renderHistory();
+  }
 
-    var list = document.getElementById("history");
+  function renderHistory() {
+    var list = $("history");
     list.innerHTML = "";
     var days = Object.keys(practice).sort().reverse();
     if (!days.length) {
@@ -107,37 +144,89 @@
       var d = document.createElement("div");
       d.className = "d mono";
       d.textContent = Hub.dateLabel(iso);
-      var n2 = document.createElement("div");
-      n2.className = "n";
-      n2.textContent = practice[iso] || "Practised";
+      var body = document.createElement("div");
+      body.className = "body";
+      var note = document.createElement("div");
+      if (practice[iso]) {
+        note.className = "rich";
+        note.innerHTML = RichText.toHTML(practice[iso]);
+      } else {
+        note.className = "empty-note";
+        note.textContent = "Practised (no note)";
+      }
+      body.appendChild(note);
+      var edit = document.createElement("button");
+      edit.type = "button";
+      edit.className = "btn small edit";
+      edit.textContent = "Edit";
+      edit.addEventListener("click", function () {
+        if (isDirty() && !confirmLeave()) return;
+        loadEditor(iso);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        editor.focus();
+      });
       row.appendChild(d);
-      row.appendChild(n2);
+      row.appendChild(body);
+      row.appendChild(edit);
       list.appendChild(row);
+      RichText.clamp(note);
     });
   }
 
+  // A draft would be lost by switching days; ask with the page's own two-step pattern instead of a dialog.
+  var leaveArmed = false;
+  function confirmLeave() {
+    if (leaveArmed) { leaveArmed = false; return true; }
+    leaveArmed = true;
+    Hub.toast("You have unsaved changes. Tap again to discard them.", 3000);
+    setTimeout(function () { leaveArmed = false; }, 3000);
+    return false;
+  }
+
   function load() {
-    return Hub.api("GET", "/api/summary").then(function (d) { practice = d.practice; render(); });
+    return Hub.api("GET", "/api/summary").then(function (d) {
+      practice = d.practice;
+      if (editingDate === null) loadEditor(Hub.todayISO());
+      else { savedNote = has(editingDate) ? (practice[editingDate] || "") : ""; render(); }
+    });
   }
 
-  function save(doneFlag) {
-    var note = document.getElementById("noteInput").value.trim();
-    return Hub.api("PUT", "/api/practice/" + Hub.todayISO(), doneFlag ? { done: true, note: note } : { done: false });
+  function save(done) {
+    var note = editor.get();
+    return Hub.api("PUT", "/api/practice/" + editingDate, done ? { done: true, note: note } : { done: false })
+      .then(function () {
+        if (done) { practice[editingDate] = note; savedNote = note; }
+        return load();
+      });
   }
 
-  document.getElementById("tickBtn").addEventListener("click", function () {
-    var btn = this;
-    var isDone = Object.prototype.hasOwnProperty.call(practice, Hub.todayISO());
+  function busy(btn, p) {
     btn.disabled = true;
-    save(!isDone).then(load).then(function () {
-      Hub.toast(isDone ? "Unmarked today." : "Practice logged — nice work!");
-    }).catch(function (e) { Hub.toast("Couldn't save: " + e.message); })
-      .then(function () { btn.disabled = false; });
+    return p.catch(function (e) { Hub.toast("Couldn't save: " + e.message); }).then(function () { btn.disabled = false; });
+  }
+
+  $("tickBtn").addEventListener("click", function () {
+    busy(this, save(true).then(function () { Hub.toast("Practice logged — nice work!"); }));
+  });
+  $("saveNoteBtn").addEventListener("click", function () {
+    busy(this, save(true).then(function () { Hub.toast("Note saved."); }));
+  });
+  Hub.armed($("undoBtn"), "Remove this day?", function () {
+    busy($("undoBtn"), save(false).then(function () {
+      Hub.toast("Unmarked.");
+      savedNote = "";
+      if (editingDate !== Hub.todayISO()) { editor.set(""); loadEditor(Hub.todayISO()); }
+      else render();  // keep today's text as a draft
+    }));
+  });
+  $("backToday").addEventListener("click", function () {
+    if (isDirty() && !confirmLeave()) return;
+    editor.set("");
+    loadEditor(Hub.todayISO());
   });
 
-  document.getElementById("saveNoteBtn").addEventListener("click", function () {
-    save(true).then(load).then(function () { Hub.toast("Note saved."); })
-      .catch(function (e) { Hub.toast("Couldn't save: " + e.message); });
+  window.addEventListener("beforeunload", function (e) {
+    if (isDirty()) { e.preventDefault(); e.returnValue = ""; }
   });
 
   Hub.setupTheme();

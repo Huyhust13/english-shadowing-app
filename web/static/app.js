@@ -7,7 +7,8 @@
     { href: "/", label: "Today" },
     { href: "/vocab", label: "Vocab" },
     { href: "/practice", label: "Practice" },
-    { href: "/shadowing", label: "Shadowing" }
+    { href: "/shadowing", label: "Shadowing" },
+    { href: "/guide", label: "Guide", wideOnly: true }  // phones: linked from Today and Settings
   ];
 
   // Apply a stored theme as early as possible to avoid a flash.
@@ -39,6 +40,7 @@
       a.href = p.href;
       a.textContent = p.label;
       if (p.href === here) a.setAttribute("aria-current", "page");
+      else if (p.wideOnly) a.className = "wide-only";
       tabs.appendChild(a);
     });
   }

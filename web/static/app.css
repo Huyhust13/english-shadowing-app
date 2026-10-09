@@ -110,7 +110,12 @@
 .app-nav .tabs a[aria-current="page"] { color: var(--accent); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
 @media (max-width: 520px) {
   .app-nav .brand span { display: none; }
-  .app-nav .tabs a { padding: 7px 9px; }
+  .app-nav .tabs a.wide-only { display: none; }
+  .app-nav .nav-inner { gap: 8px; }
+  .app-nav .tabs a { padding: 6px 7px; font-size: 0.8rem; }
+}
+@media (max-width: 380px) {
+  .app-nav .tabs a { padding: 6px 4px; }
 }
 
 /* ---- Page basics for the new pages ---- */

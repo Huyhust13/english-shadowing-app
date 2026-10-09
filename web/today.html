@@ -35,7 +35,9 @@
   .act[data-done="1"] .check { background: var(--success); border-color: var(--success); color: #fff; }
   .act-stat { font-size: 1.6rem; font-weight: 700; line-height: 1.1; }
   .act-stat small { font-size: 0.8rem; font-weight: 500; color: var(--muted); margin-left: 4px; }
-  .act-detail { font-size: 0.82rem; color: var(--muted); min-height: 2.6em; }
+  .act-detail { font-size: 0.82rem; color: var(--muted); min-height: 2.6em; overflow-wrap: anywhere;
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
+  .act-detail .quote { color: var(--text); }
   .act-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; }
   .act-streak { font-size: 0.78rem; color: var(--muted); }
 
@@ -48,6 +50,11 @@
   .grid14 .dot.full[data-on="1"] { background: var(--accent); }
   .grid14 .clabel { font-size: 0.62rem; color: var(--muted); text-align: center; white-space: nowrap; overflow: visible; width: 0; display: flex; justify-content: center; }
   .note-line { font-size: 0.78rem; color: var(--muted); margin-top: 12px; }
+  .guide-link { display: flex; align-items: center; gap: 14px; text-decoration: none; color: var(--text) !important; }
+  .guide-link:hover { border-color: var(--accent); }
+  .guide-ic { font-size: 1.5rem; }
+  .guide-link > span:nth-child(2) { flex: 1; font-size: 0.92rem; line-height: 1.45; }
+  .guide-arrow { color: var(--accent); font-size: 1.2rem; }
 </style>
 </head>
 <body class="hub">
@@ -93,7 +100,7 @@
       <div class="act-detail" id="practiceDetail">Write or say sentences with an AI tutor, then tick it off.</div>
       <div class="act-foot">
         <span class="act-streak" id="practiceStreak"></span>
-        <button class="btn small" id="practiceToggle" type="button">Mark done</button>
+        <a class="btn primary small" id="practiceBtn" href="/practice">Practise</a>
       </div>
     </article>
 
@@ -117,7 +124,14 @@
     <div class="note-line" id="gridNote"></div>
   </section>
 
+  <a class="card guide-link" href="/guide">
+    <span class="guide-ic" aria-hidden="true">📖</span>
+    <span><b>How to use English Hub</b><br><span class="muted small">A 20–30 minute daily routine, AI prompts to copy, and how to shadow well.</span></span>
+    <span class="guide-arrow" aria-hidden="true">→</span>
+  </a>
+
 </div>
+<script src="/static/editor.js"></script>
 <script src="/static/app.js"></script>
 <script>
 (function () {
@@ -189,11 +203,21 @@
     var practiced = done("practice", t);
     document.getElementById("actPractice").setAttribute("data-done", practiced ? "1" : "0");
     document.getElementById("practiceStat").innerHTML = practiced ? "Done<small>today</small>" : "Not yet<small>today</small>";
-    var note = data.practice[t];
-    document.getElementById("practiceDetail").textContent = practiced && note ? note : "Write or say sentences with an AI tutor, then tick it off.";
-    var pt = document.getElementById("practiceToggle");
-    pt.textContent = practiced ? "Undo" : "Mark done";
-    pt.className = practiced ? "btn small" : "btn success small";
+    // Only a short plain-text preview here; the full note lives on the Practice page.
+    var preview = practiced ? RichText.toText(data.practice[t] || "") : "";
+    var pd = document.getElementById("practiceDetail");
+    if (preview) {
+      pd.innerHTML = "";
+      var q = document.createElement("span");
+      q.className = "quote";
+      q.textContent = "“" + (preview.length > 160 ? preview.slice(0, 157).replace(/\s+\S*$/, "") + "…" : preview) + "”";
+      pd.appendChild(q);
+    } else {
+      pd.textContent = practiced ? "Logged today." : "Write or say sentences with an AI tutor, then log them.";
+    }
+    var pb = document.getElementById("practiceBtn");
+    pb.textContent = practiced ? "View notes" : "Practise";
+    pb.className = practiced ? "btn small" : "btn primary small";
     document.getElementById("practiceStreak").textContent = streakText("practice");
 
     // Shadowing
@@ -260,17 +284,6 @@
       if (data) render();
     }).catch(function () { due = null; });
   }
-
-  document.getElementById("practiceToggle").addEventListener("click", function () {
-    var btn = this;
-    var t = Hub.todayISO();
-    var isDone = done("practice", t);
-    btn.disabled = true;
-    Hub.api("PUT", "/api/practice/" + t, isDone ? { done: false } : { done: true, note: "" })
-      .then(loadSummary)
-      .catch(function (e) { Hub.toast("Couldn't save: " + e.message); })
-      .then(function () { btn.disabled = false; });
-  });
 
   Hub.setupTheme();
   loadSummary().then(loadDue).catch(function (e) {

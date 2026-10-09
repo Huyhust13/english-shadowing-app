@@ -67,3 +67,20 @@ def test_no_reminder_when_done(app, conn, make_user):
     activity.set_practice(conn, uid, "2026-10-10", True)
     left, streak = reminders.habit_status(conn, uid, datetime.date(2026, 10, 10))
     assert left == [] and streak == 1
+
+
+def test_pages_served(app, make_user):
+    make_user("huy")
+    c = app.test_client()
+    login(c, "huy")
+    for path in ("/", "/practice", "/shadowing", "/guide", "/settings", "/static/editor.js", "/static/editor.css"):
+        assert c.get(path).status_code == 200, path
+
+
+def test_long_rich_practice_note(app, make_user):
+    make_user("huy")
+    c = app.test_client()
+    login(c, "huy")
+    note = "<b>I have lived</b> here <mark>since</mark> 2020.<br>" * 2000  # ~70 KB
+    assert c.put("/api/practice/2026-10-10", json={"done": True, "note": note}).status_code == 200
+    assert c.get("/api/summary").get_json()["practice"]["2026-10-10"] == note

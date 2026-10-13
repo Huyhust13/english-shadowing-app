@@ -1,53 +1,53 @@
 /* Shared look for English Hub pages. shadowing.html keeps its own styles and only uses the nav. */
 :root {
-  --bg: #F1F0EC;
+  --bg: #EEF3F7;
   --surface: #FFFFFF;
-  --surface-2: #E7E5DE;
-  --text: #17211C;
-  --muted: #5E6B63;
-  --line: #D7D4CA;
-  --accent: #B4722E;
+  --surface-2: #E1EAF1;
+  --text: #0F2438;
+  --muted: #557086;
+  --line: #D3DFE8;
+  --accent: #1F6FD1;
   --accent-ink: #FFFFFF;
-  --success: #2F7A66;
-  --danger: #B3412E;
-  --wave-track: #DEDBD1;
-  --new: #2D6FB7;
-  --learn: #B3412E;
-  --review: #2F7A66;
+  --success: #0E9384;
+  --danger: #C2412D;
+  --wave-track: #D9E4EC;
+  --new: #5B5BD6;
+  --learn: #C2412D;
+  --review: #0E9384;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #11181A;
-    --surface: #19221F;
-    --surface-2: #212B27;
-    --text: #ECEAE2;
-    --muted: #8FA099;
-    --line: #2B3733;
-    --accent: #E0A458;
-    --accent-ink: #1A140A;
-    --success: #5FB8A0;
-    --danger: #E07A66;
-    --wave-track: #263330;
-    --new: #7FB2EA;
-    --learn: #E98F7C;
-    --review: #5FB8A0;
+    --bg: #0B1621;
+    --surface: #12212F;
+    --surface-2: #1A2D3E;
+    --text: #E6EEF5;
+    --muted: #8BA3B8;
+    --line: #23384B;
+    --accent: #5AA2F5;
+    --accent-ink: #06121E;
+    --success: #2EC4B0;
+    --danger: #F08A73;
+    --wave-track: #1C3043;
+    --new: #A5A6F6;
+    --learn: #F08A73;
+    --review: #2EC4B0;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #11181A;
-  --surface: #19221F;
-  --surface-2: #212B27;
-  --text: #ECEAE2;
-  --muted: #8FA099;
-  --line: #2B3733;
-  --accent: #E0A458;
-  --accent-ink: #1A140A;
-  --success: #5FB8A0;
-  --danger: #E07A66;
-  --wave-track: #263330;
-  --new: #7FB2EA;
-  --learn: #E98F7C;
-  --review: #5FB8A0;
+  --bg: #0B1621;
+  --surface: #12212F;
+  --surface-2: #1A2D3E;
+  --text: #E6EEF5;
+  --muted: #8BA3B8;
+  --line: #23384B;
+  --accent: #5AA2F5;
+  --accent-ink: #06121E;
+  --success: #2EC4B0;
+  --danger: #F08A73;
+  --wave-track: #1C3043;
+  --new: #A5A6F6;
+  --learn: #F08A73;
+  --review: #2EC4B0;
 }
 
 /* ---- Top navigation (used by every page) ---- */
@@ -126,7 +126,7 @@ body.hub {
   min-height: 100%;
   background: var(--bg);
   color: var(--text);
-  font-family: 'Sora', system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, "Segoe UI", sans-serif;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }

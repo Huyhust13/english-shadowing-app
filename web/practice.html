@@ -91,6 +91,7 @@
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
   var practice = {};          // { 'YYYY-MM-DD': note }
+  var practiceStreak = 0;     // days in a row with practice, from the server
   var editingDate = null;     // the day shown in the editor (today unless editing an older day)
   var savedNote = "";         // what the server has for editingDate, to spot unsaved changes
 
@@ -124,8 +125,8 @@
     $("saveNoteBtn").hidden = !isDone;
     $("undoBtn").hidden = !isDone;
     $("backToday").hidden = isToday;
-    var n = Hub.streak(function (iso) { return has(iso); });
-    $("streakInline").textContent = n ? "🔥 " + n + " day streak" : "";
+    var n = practiceStreak;
+    $("streakInline").textContent = n ? "🔥 " + n + " day" + (n === 1 ? "" : "s") + " of practice in a row" : "";
     renderDirty();
     renderHistory();
   }
@@ -186,6 +187,7 @@
   function load() {
     return Hub.api("GET", "/api/summary").then(function (d) {
       practice = d.practice;
+      practiceStreak = d.streak.perHabit.practice;
       if (editingDate === null) loadEditor(Hub.todayISO());
       else { savedNote = has(editingDate) ? (practice[editingDate] || "") : ""; render(); }
     });

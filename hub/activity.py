@@ -1,4 +1,4 @@
-"""Shadowing sessions and practice ticks for one person, plus streak maths.
+"""Shadowing sessions and practice ticks for one person (streak maths: streak.py).
 
 Every query is scoped by user_id; there is no function here that reads across
 users. Dates are 'YYYY-MM-DD' strings in the person's own calendar (the browser
@@ -91,7 +91,7 @@ def set_practice(conn, user_id, date, done, note=""):
             conn.execute("DELETE FROM practice_days WHERE user_id = ? AND date = ?", (user_id, date))
 
 
-# ---- Summary & streaks ---------------------------------------------------------------
+# ---- Summary -----------------------------------------------------------------------
 
 def shadow_days(conn, user_id):
     return {r["date"]: r["reps"] for r in conn.execute(
@@ -102,15 +102,6 @@ def practice_days(conn, user_id):
     return {r["date"]: r["note"] for r in conn.execute(
         "SELECT date, note FROM practice_days WHERE user_id = ?", (user_id,))}
 
-
-def streak(done_dates, today):
-    """Consecutive days ending today (or yesterday, if today isn't done yet)."""
-    day = today if today.isoformat() in done_dates else today - datetime.timedelta(days=1)
-    n = 0
-    while day.isoformat() in done_dates:
-        n += 1
-        day -= datetime.timedelta(days=1)
-    return n
 
 
 def export(conn, user_id):

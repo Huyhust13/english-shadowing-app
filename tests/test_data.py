@@ -23,6 +23,8 @@ def test_each_user_sees_only_their_own_log(app, make_user):
     a.put("/api/practice/2026-10-09", json={"done": True, "note": "hi"})
     assert a.get("/api/summary").get_json()["practice"] == {"2026-10-09": "hi"}
     assert b.get("/api/summary").get_json()["practice"] == {}
+    summary = a.get("/api/summary").get_json()
+    assert summary["today"] == summary["streak"]["today"] and "current" in summary["streak"]
 
 
 def test_bad_input(app, make_user):
@@ -34,14 +36,6 @@ def test_bad_input(app, make_user):
     assert c.get("/api/title?url=http://127.0.0.1/").status_code == 400
     assert c.get("/api/title?url=http://192.168.10.21:8090/").status_code == 400
     assert c.get("/api/title?url=file:///etc/passwd").status_code == 400
-
-
-def test_streak():
-    today = datetime.date(2026, 10, 10)
-    days = {"2026-10-07", "2026-10-08", "2026-10-09"}
-    assert activity.streak(days, today) == 3            # today not done yet: count from yesterday
-    assert activity.streak(days | {"2026-10-10"}, today) == 4
-    assert activity.streak({"2026-10-08"}, today) == 0
 
 
 def test_reminder_runs_once_at_local_time(app, conn, make_user):
@@ -65,8 +59,8 @@ def test_no_reminder_when_done(app, conn, make_user):
     uid = make_user("huy")
     activity.add_sessions(conn, uid, [dict(SESSION, date="2026-10-10")])
     activity.set_practice(conn, uid, "2026-10-10", True)
-    left, streak = reminders.habit_status(conn, uid, datetime.date(2026, 10, 10))
-    assert left == [] and streak == 1
+    left, state = reminders.habit_status(conn, uid, datetime.date(2026, 10, 10))
+    assert left == [] and state["current"] == 1 and state["perfect"] == ["2026-10-10"]
 
 
 def test_pages_served(app, make_user):

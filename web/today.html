@@ -19,6 +19,14 @@
   .streak-big { font-size: 2.8rem; font-weight: 700; color: var(--accent); line-height: 1; min-width: 2.2ch; text-align: right; }
   .streak-copy .label { font-weight: 600; }
   .streak-copy .sub { font-size: 0.84rem; color: var(--muted); margin-top: 3px; }
+  .streak-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .streak-meta span { font-size: 0.74rem; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 2px 9px; }
+  .streak-card[data-status="repair"] { border-color: var(--danger); box-shadow: inset 0 0 0 1px var(--danger); }
+  .streak-card[data-status="repair"] .sub { color: var(--danger); }
+  .milestone { display: flex; align-items: center; gap: 14px; border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .milestone[hidden] { display: none; }
+  .milestone-ic { font-size: 2rem; }
+  .milestone > div { flex: 1; }
 
   .activities { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 16px; }
   @media (max-width: 720px) { .activities { grid-template-columns: 1fr; } }
@@ -48,6 +56,7 @@
   .grid14 .dot[data-on="1"] { background: var(--success); }
   .grid14 .dot[data-today="1"] { outline: 2px solid var(--accent); outline-offset: 1px; }
   .grid14 .dot.full[data-on="1"] { background: var(--accent); }
+  .grid14 .dot[data-mark] { display: grid; place-items: center; font-size: 0.7rem; line-height: 1; }
   .grid14 .clabel { font-size: 0.62rem; color: var(--muted); text-align: center; white-space: nowrap; overflow: visible; width: 0; display: flex; justify-content: center; }
   .note-line { font-size: 0.78rem; color: var(--muted); margin-top: 12px; }
   .guide-link { display: flex; align-items: center; gap: 14px; text-decoration: none; color: var(--text) !important; }
@@ -69,11 +78,18 @@
     <button class="theme-btn" id="themeToggle" type="button">Dark</button>
   </header>
 
-  <section class="card streak-card">
+  <section class="card milestone" id="milestone" hidden>
+    <span class="milestone-ic" aria-hidden="true">🎉</span>
+    <div><b id="milestoneTitle"></b><br><span class="muted small" id="milestoneSub"></span></div>
+    <button class="btn small" id="milestoneClose" type="button">Nice!</button>
+  </section>
+
+  <section class="card streak-card" id="streakCard">
     <div class="streak-big mono" id="fullStreak">0</div>
     <div class="streak-copy">
-      <div class="label" id="fullStreakLabel">day streak, all three done</div>
-      <div class="sub" id="fullStreakSub">Vocab, practice and shadowing on the same day.</div>
+      <div class="label" id="fullStreakLabel">day streak</div>
+      <div class="sub" id="fullStreakSub">Do any habit today to start one.</div>
+      <div class="streak-meta" id="streakMeta"></div>
     </div>
   </section>
 
@@ -151,12 +167,51 @@
     if (kind === "vocab") return (data.anki[iso] || 0) > 0;
     if (kind === "practice") return Object.prototype.hasOwnProperty.call(data.practice, iso);
     if (kind === "shadow") return (data.shadow[iso] || 0) > 0;
-    return habits().every(function (k) { return done(k, iso); });
+    return isPerfect(iso);
   }
 
   function streakText(kind) {
-    var n = Hub.streak(function (iso) { return done(kind, iso); });
+    var n = data.streak.perHabit[kind] || 0;
     return n ? "🔥 " + plural(n, "day") : "No streak yet";
+  }
+
+  function isPerfect(iso) { return data.streak.perfect.indexOf(iso) !== -1; }
+
+  function renderStreak(left) {
+    var s = data.streak;
+    var names = { vocab: "vocab", practice: "practice", shadow: "shadowing" };
+    var todo = left.map(function (k) { return names[k]; }).join(", ");
+    document.getElementById("fullStreak").textContent = String(s.current);
+    document.getElementById("streakCard").setAttribute("data-status", s.todayStatus);
+    var sub = {
+      done: left.length ? "Today counts. Do " + todo + " too for a perfect day." : "Perfect day! See you tomorrow.",
+      repair: "You missed yesterday. Do every habit today to earn the streak back: " + todo + ".",
+      at_risk: s.freezes ? "Do any habit today. A ❄️ freeze covers today if you can't."
+                         : "Do any habit today to keep it going.",
+      none: "Do any habit today to start a streak."
+    }[s.todayStatus];
+    document.getElementById("fullStreakSub").textContent = sub;
+
+    var meta = ["❄️ " + plural(s.freezes, "freeze"),
+                "Best " + plural(s.longest, "day"),
+                s.freezes < 2 ? "Freeze in " + plural(s.nextFreezeIn, "perfect day") : "Freezes full",
+                "Next 🏆 " + s.nextMilestone];
+    var box = document.getElementById("streakMeta");
+    box.innerHTML = "";
+    meta.forEach(function (m) { var e = document.createElement("span"); e.textContent = m; box.appendChild(e); });
+
+    // Celebrate a milestone once per streak (remembered in this browser).
+    var card = document.getElementById("milestone");
+    if (s.milestone) {
+      var key = "hub-milestone-" + s.since + "-" + s.milestone;
+      var seen = false;
+      try { seen = localStorage.getItem(key) === "1"; localStorage.setItem(key, "1"); } catch (e) {}
+      if (!seen) {
+        document.getElementById("milestoneTitle").textContent = s.milestone + "-day streak!";
+        document.getElementById("milestoneSub").textContent = "Next milestone: " + s.nextMilestone + " days.";
+        card.hidden = false;
+      }
+    }
   }
 
   function render() {
@@ -169,16 +224,7 @@
       document.getElementById("greeting").textContent = hello + ", " + m.displayName.split(" ")[0];
     }).catch(function () {});
 
-    // Full-day streak
-    var full = Hub.streak(function (iso) { return done("full", iso); });
-    document.getElementById("fullStreak").textContent = String(full);
-    document.getElementById("fullStreakLabel").textContent = data.ankiConnected
-      ? "day streak, all three done" : "day streak, practice and shadowing done";
-    var left = habits().filter(function (k) { return !done(k, t); });
-    var names = { vocab: "vocab", practice: "practice", shadow: "shadowing" };
-    document.getElementById("fullStreakSub").textContent = left.length === 0
-      ? "All done today. See you tomorrow!"
-      : "Still to do today: " + left.map(function (k) { return names[k]; }).join(", ") + ".";
+    renderStreak(habits().filter(function (k) { return !done(k, t); }));
 
     // Vocab
     var reviews = data.anki[t] || 0;
@@ -233,7 +279,7 @@
   function renderGrid() {
     var grid = document.getElementById("grid14");
     grid.innerHTML = "";
-    var rows = [["vocab", "Vocab"], ["practice", "Practice"], ["shadow", "Shadowing"], ["full", "All done"]];
+    var rows = [["vocab", "Vocab"], ["practice", "Practice"], ["shadow", "Shadowing"], ["full", "Perfect"]];
     if (!data.ankiConnected) rows.shift();
     rows.forEach(function (r) {
       var lbl = document.createElement("div");
@@ -250,7 +296,16 @@
         var extra = "";
         if (r[0] === "vocab" && data.anki[iso]) extra = " (" + plural(data.anki[iso], "review") + ")";
         if (r[0] === "shadow" && data.shadow[iso]) extra = " (" + plural(data.shadow[iso], "rep") + ")";
-        dot.title = Hub.dateLabel(iso) + " · " + r[1] + ": " + (on ? "done" + extra : "not done");
+        var status = on ? "done" + extra : "not done";
+        if (r[0] === "full") {
+          var mark = data.streak.frozen.indexOf(iso) !== -1 ? "❄️" : data.streak.repaired.indexOf(iso) !== -1 ? "🩹" : "";
+          if (mark) {
+            dot.setAttribute("data-mark", mark);
+            dot.textContent = mark;
+            status = mark === "❄️" ? "missed, a freeze kept the streak" : "missed, earned back the next day";
+          }
+        }
+        dot.title = Hub.dateLabel(iso) + " · " + r[1] + ": " + status;
         grid.appendChild(dot);
       }
     });
@@ -285,6 +340,9 @@
     }).catch(function () { due = null; });
   }
 
+  document.getElementById("milestoneClose").addEventListener("click", function () {
+    document.getElementById("milestone").hidden = true;
+  });
   Hub.setupTheme();
   loadSummary().then(loadDue).catch(function (e) {
     document.getElementById("fullStreakSub").textContent = "Couldn't reach the server: " + e.message;

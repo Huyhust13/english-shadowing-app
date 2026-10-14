@@ -44,7 +44,8 @@ hub/                      the Python package (back end)
   db.py                   SQLite connections + numbered migrations
   security.py             login session, @login_required/@admin_required, CSRF, rate limits
   users.py                accounts, passwords, invite/reset links, settings     (data access)
-  activity.py             shadowing sessions, practice ticks, streak maths      (data access)
+  activity.py             shadowing sessions, practice ticks                    (data access)
+  streak.py               streak maths: freezes, earn back, milestones          (pure logic)
   anki_service.py         one person's Anki collection (wraps the `anki` package)
   anki_pool.py            AnkiPool: opens/closes/syncs collections per user
   notify.py               Message, TelegramChannel, PushChannel, Notifier
@@ -260,7 +261,7 @@ Daemon threads started by `start_workers(app)`, never in tests:
   messages. Linking is a deep link `t.me/<bot>?start=<token>`: the friend presses
   *Start* and the bot matches the token. No codes to copy.
 
-Pure logic (`habit_status`, `build_message`, `activity.streak`) is kept separate from
+Pure logic (`habit_status`, `build_message`, `streak.compute`) is kept separate from
 the threads so it can be unit-tested with fixed dates.
 
 ### 3.16 Progressive Web App + Web Push — `web/manifest.webmanifest`, `web/sw.js`

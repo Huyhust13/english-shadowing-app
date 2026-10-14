@@ -14,7 +14,7 @@ import logging
 import threading
 import zoneinfo
 
-from . import activity, db
+from . import db, streak
 from .notify import Message
 
 log = logging.getLogger(__name__)
@@ -23,20 +23,26 @@ NAMES = {"vocab": "vocab", "practice": "sentence practice", "shadow": "shadowing
 
 
 def habit_status(conn, user_id, today, anki_days=None):
-    """(habits left today, streak of days with every habit done)."""
-    done = {"practice": set(activity.practice_days(conn, user_id)),
-            "shadow": {d for d, reps in activity.shadow_days(conn, user_id).items() if reps}}
-    if anki_days is not None:
-        done["vocab"] = {d for d, n in anki_days.items() if n}
-    left = [h for h in ("vocab", "practice", "shadow") if h in done and today.isoformat() not in done[h]]
-    all_done = set.intersection(*done.values())
-    return left, activity.streak(all_done, today)
+    """(habits left today, streak state from streak.compute)."""
+    days = streak.habit_days(conn, user_id, anki_days)
+    left = [h for h in streak.HABITS if h in days and today.isoformat() not in days[h]]
+    return left, streak.compute(days, today)
 
 
-def build_message(name, left, streak, url):
+def build_message(name, left, state, url):
     todo = ", ".join(NAMES[h] for h in left)
-    if streak:
-        title = f"🔥 Your {streak}-day streak ends tonight"
+    n, status = state["current"], state["todayStatus"]
+    if status == "repair":
+        title = f"⚠️ Save your {n}-day streak today"
+        body = f"Hi {name}, you missed yesterday. Do every habit today to earn it back: {todo}."
+    elif status == "done":
+        title = f"🔥 {n}-day streak is safe"
+        body = f"Hi {name}, today already counts. Still open if you want a perfect day: {todo}."
+    elif n and state["freezes"]:
+        title = f"🔥 Keep your {n}-day streak going"
+        body = f"Hi {name}, still to do today: {todo}. A ❄️ freeze will cover today if you can't."
+    elif n:
+        title = f"🔥 Your {n}-day streak ends tonight"
         body = f"Hi {name}, still to do today: {todo}. A few minutes keeps it going."
     else:
         title = "🎧 Time for today's English practice"
@@ -96,14 +102,14 @@ class ReminderService:
     def remind(self, conn, user, today, force=False):
         """Send today's reminder if anything is left (or always, with force). Returns what was sent."""
         anki_days = self._anki_days(user)
-        left, streak = habit_status(conn, user["id"], today, anki_days)
+        left, state = habit_status(conn, user["id"], today, anki_days)
         if not left and not force:
             return {}
         if not left:
             msg = Message("✅ All done today", f"Nice work, {user['display_name']}! This is a test reminder.",
                           self.public_url + "/")
         else:
-            msg = build_message(user["display_name"], left, streak, self.public_url + "/")
+            msg = build_message(user["display_name"], left, state, self.public_url + "/")
         sent = self.notifier.send(user["id"], msg)
         log.info("reminder for user %s: left=%s sent=%s", user["id"], left, sent)
         return sent

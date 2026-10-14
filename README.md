@@ -12,6 +12,10 @@ has their own private account and keeps three habits going, with one streak:
 2. **Sentence practice** — a "done today" tick with a note (AI modes later).
 3. **Shadowing** — log the clip, reps, how it felt, and notes/script.
 
+The streak works like Duolingo's: any habit done keeps it going, every 7 perfect days
+(all habits) earn a freeze (hold 2) that covers a missed day, and a perfect day right
+after a miss earns the streak back. Milestones at 7, 21, 90, then every 100 days.
+
 The **Today** page shows what's left today, streaks and the last 14 days. A **daily
 reminder** goes out by Telegram and/or phone notification at each person's own
 time, only on days they haven't finished.

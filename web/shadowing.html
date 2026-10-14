@@ -367,7 +367,7 @@
   <section class="streak-card">
     <div class="streak-counter" id="streakCount">0</div>
     <div class="streak-copy">
-      <div class="label">day streak</div>
+      <div class="label">days of shadowing in a row</div>
       <div class="sub" id="streakSub">Log today's session to start one.</div>
     </div>
   </section>
@@ -437,12 +437,11 @@
   var confSelected = null;
   var sessionsCache = [];
   var editing = null; // the session currently loaded into the form for editing
+  var shadowStreak = 0; // days in a row with shadowing, from the server
 
-  function todayISO() {
-    var d = new Date();
-    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-    return d.toISOString().slice(0, 10);
-  }
+  // Dates follow the server's "today" (the timezone in Settings); see app.js.
+  function todayISO() { return Hub.todayISO(); }
+  function daysAgoISO(n) { return Hub.daysAgoISO(n); }
 
   function load() {
     return sessionsCache;
@@ -454,7 +453,9 @@
       return res.json();
     }).then(function (rows) {
       sessionsCache = rows;
-      return rows;
+      return Hub.api("GET", "/api/summary").then(function (d) {
+        shadowStreak = d.streak.perHabit.shadow;
+      }).catch(function (e) { console.error(e); }).then(function () { return rows; });
     });
   }
 
@@ -487,33 +488,8 @@
     return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
   }
 
-  function daysAgoISO(n) {
-    var d = new Date();
-    d.setDate(d.getDate() - n);
-    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-    return d.toISOString().slice(0, 10);
-  }
-
-  function computeStreak(sessions) {
-    var daysWithSession = {};
-    sessions.forEach(function (s) { daysWithSession[s.date] = true; });
-    var streak = 0;
-    var cursor = todayISO();
-    if (!daysWithSession[cursor]) {
-      cursor = daysAgoISO(1);
-      if (!daysWithSession[cursor]) return 0;
-    }
-    // Count back from yesterday when today isn't logged yet, so the streak survives until midnight.
-    var i = cursor === todayISO() ? 0 : 1;
-    while (daysWithSession[daysAgoISO(i)]) {
-      streak++;
-      i++;
-    }
-    return streak;
-  }
-
   function renderStreak(sessions) {
-    var streak = computeStreak(sessions);
+    var streak = shadowStreak;
     document.getElementById("streakCount").textContent = String(streak);
     var sub = document.getElementById("streakSub");
     if (streak === 0) {

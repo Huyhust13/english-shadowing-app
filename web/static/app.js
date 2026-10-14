@@ -1,4 +1,4 @@
-// Shared helpers for English Hub pages: navigation, theme, dates, API calls, streaks.
+// Shared helpers for English Hub pages: navigation, theme, dates, API calls.
 (function () {
   "use strict";
 
@@ -69,23 +69,17 @@
     c.setMinutes(c.getMinutes() - c.getTimezoneOffset());
     return c.toISOString().slice(0, 10);
   }
-  function todayISO() { return isoDate(new Date()); }
+  // "Today" follows the server (the timezone in Settings) once /api/summary has
+  // answered; until then, the browser's own date.
+  var serverToday = null;
+  function todayISO() { return serverToday || isoDate(new Date()); }
   function daysAgoISO(n) {
-    var d = new Date();
+    var d = new Date(todayISO() + "T12:00:00");
     d.setDate(d.getDate() - n);
     return isoDate(d);
   }
   function dateLabel(iso, opts) {
     return new Date(iso + "T00:00:00").toLocaleDateString(undefined, opts || { month: "short", day: "numeric" });
-  }
-
-  // Consecutive days for which isDone(iso) is true. Today not being done yet doesn't
-  // break the streak: until midnight it counts back from yesterday.
-  function streak(isDone) {
-    var i = isDone(todayISO()) ? 0 : 1;
-    var n = 0;
-    while (isDone(daysAgoISO(i))) { n++; i++; }
-    return n;
   }
 
   var mePromise = null;
@@ -112,6 +106,7 @@
           err.status = res.status;
           throw err;
         }
+        if (data && typeof data.today === "string") serverToday = data.today;
         return data;
       });
     });
@@ -156,7 +151,6 @@
     todayISO: todayISO,
     daysAgoISO: daysAgoISO,
     dateLabel: dateLabel,
-    streak: streak,
     api: api,
     me: me,
     toast: toast,

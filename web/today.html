@@ -55,12 +55,11 @@
   @media (max-width: 520px) { .grid14 { grid-template-columns: 70px repeat(14, minmax(0, 1fr)); gap: 4px 3px; } .grid14 .rlabel { font-size: 0.7rem; } .grid14 .dot { border-radius: 3px; } }
   .grid14 .dot[data-on="1"] { background: var(--success); }
   .grid14 .dot[data-today="1"] { outline: 2px solid var(--accent); outline-offset: 1px; }
-  .grid14 .dot[data-level="perfect"], .legend .sw.perfect { background: var(--accent); }
-  .grid14 .dot[data-level="streak"], .legend .sw.streak { background: color-mix(in srgb, var(--accent) 35%, var(--wave-track)); }
-  .grid14 .dot[data-level="freeze"], .grid14 .dot[data-level="repair"] { display: grid; place-items: center; font-size: 0.7rem; line-height: 1; }
+  .grid14 .dot[data-level] { display: grid; place-items: center; font-size: 0.72rem; line-height: 1; }
+  .grid14 .dot[data-level="perfect"] { background: color-mix(in srgb, #F5B301 32%, var(--surface)); box-shadow: inset 0 0 0 1.5px #F5B301; }
+  .grid14 .dot[data-level="streak"] { background: color-mix(in srgb, #F2711C 14%, var(--wave-track)); }
+  @media (max-width: 520px) { .grid14 .dot[data-level] { font-size: 0.58rem; } }
   .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 12px; font-size: 0.74rem; color: var(--muted); }
-  .legend span { display: inline-flex; align-items: center; gap: 5px; }
-  .legend .sw { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
   .grid14 .clabel { font-size: 0.62rem; color: var(--muted); text-align: center; white-space: nowrap; overflow: visible; width: 0; display: flex; justify-content: center; }
   .note-line { font-size: 0.78rem; color: var(--muted); margin-top: 12px; }
   .guide-link { display: flex; align-items: center; gap: 14px; text-decoration: none; color: var(--text) !important; }
@@ -142,8 +141,8 @@
     <h2>Last 14 days</h2>
     <div class="grid14" id="grid14"></div>
     <div class="legend" aria-label="Streak row legend">
-      <span><i class="sw perfect"></i>Perfect day</span>
-      <span><i class="sw streak"></i>Streak day (1+ habit)</span>
+      <span>⭐ Perfect day</span>
+      <span>🔥 Streak day (1+ habit)</span>
       <span>❄️ Freeze used</span>
       <span>🩹 Earned back</span>
     </div>
@@ -188,7 +187,7 @@
 
   // How a day counted for the streak: perfect (every habit), streak (at least one),
   // freeze or repair (missed but kept), or none.
-  var STREAK_MARKS = { freeze: "❄️", repair: "🩹" };
+  var STREAK_MARKS = { perfect: "⭐", streak: "🔥", freeze: "❄️", repair: "🩹" };
   var STREAK_TEXT = {
     perfect: "perfect day, every habit done",
     streak: "streak day, at least one habit done",

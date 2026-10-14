@@ -55,8 +55,12 @@
   @media (max-width: 520px) { .grid14 { grid-template-columns: 70px repeat(14, minmax(0, 1fr)); gap: 4px 3px; } .grid14 .rlabel { font-size: 0.7rem; } .grid14 .dot { border-radius: 3px; } }
   .grid14 .dot[data-on="1"] { background: var(--success); }
   .grid14 .dot[data-today="1"] { outline: 2px solid var(--accent); outline-offset: 1px; }
-  .grid14 .dot.full[data-on="1"] { background: var(--accent); }
-  .grid14 .dot[data-mark] { display: grid; place-items: center; font-size: 0.7rem; line-height: 1; }
+  .grid14 .dot[data-level="perfect"], .legend .sw.perfect { background: var(--accent); }
+  .grid14 .dot[data-level="streak"], .legend .sw.streak { background: color-mix(in srgb, var(--accent) 35%, var(--wave-track)); }
+  .grid14 .dot[data-level="freeze"], .grid14 .dot[data-level="repair"] { display: grid; place-items: center; font-size: 0.7rem; line-height: 1; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 12px; font-size: 0.74rem; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .legend .sw { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
   .grid14 .clabel { font-size: 0.62rem; color: var(--muted); text-align: center; white-space: nowrap; overflow: visible; width: 0; display: flex; justify-content: center; }
   .note-line { font-size: 0.78rem; color: var(--muted); margin-top: 12px; }
   .guide-link { display: flex; align-items: center; gap: 14px; text-decoration: none; color: var(--text) !important; }
@@ -137,6 +141,12 @@
   <section class="card">
     <h2>Last 14 days</h2>
     <div class="grid14" id="grid14"></div>
+    <div class="legend" aria-label="Streak row legend">
+      <span><i class="sw perfect"></i>Perfect day</span>
+      <span><i class="sw streak"></i>Streak day (1+ habit)</span>
+      <span>❄️ Freeze used</span>
+      <span>🩹 Earned back</span>
+    </div>
     <div class="note-line" id="gridNote"></div>
   </section>
 
@@ -166,8 +176,7 @@
     if (!data) return false;
     if (kind === "vocab") return (data.anki[iso] || 0) > 0;
     if (kind === "practice") return Object.prototype.hasOwnProperty.call(data.practice, iso);
-    if (kind === "shadow") return (data.shadow[iso] || 0) > 0;
-    return isPerfect(iso);
+    return (data.shadow[iso] || 0) > 0;
   }
 
   function streakText(kind) {
@@ -176,6 +185,24 @@
   }
 
   function isPerfect(iso) { return data.streak.perfect.indexOf(iso) !== -1; }
+
+  // How a day counted for the streak: perfect (every habit), streak (at least one),
+  // freeze or repair (missed but kept), or none.
+  var STREAK_MARKS = { freeze: "❄️", repair: "🩹" };
+  var STREAK_TEXT = {
+    perfect: "perfect day, every habit done",
+    streak: "streak day, at least one habit done",
+    freeze: "missed, a freeze kept the streak",
+    repair: "missed, earned back the next day",
+    none: "no streak"
+  };
+  function streakLevel(iso) {
+    if (isPerfect(iso)) return "perfect";
+    if (habits().some(function (k) { return done(k, iso); })) return "streak";
+    if (data.streak.frozen.indexOf(iso) !== -1) return "freeze";
+    if (data.streak.repaired.indexOf(iso) !== -1) return "repair";
+    return "none";
+  }
 
   function renderStreak(left) {
     var s = data.streak;
@@ -279,7 +306,7 @@
   function renderGrid() {
     var grid = document.getElementById("grid14");
     grid.innerHTML = "";
-    var rows = [["vocab", "Vocab"], ["practice", "Practice"], ["shadow", "Shadowing"], ["full", "Perfect"]];
+    var rows = [["vocab", "Vocab"], ["practice", "Practice"], ["shadow", "Shadowing"], ["streak", "Streak"]];
     if (!data.ankiConnected) rows.shift();
     rows.forEach(function (r) {
       var lbl = document.createElement("div");
@@ -289,21 +316,21 @@
       for (var i = 13; i >= 0; i--) {
         var iso = Hub.daysAgoISO(i);
         var dot = document.createElement("div");
-        dot.className = "dot" + (r[0] === "full" ? " full" : "");
-        var on = done(r[0], iso);
-        if (on) dot.setAttribute("data-on", "1");
+        dot.className = "dot";
         if (i === 0) dot.setAttribute("data-today", "1");
-        var extra = "";
-        if (r[0] === "vocab" && data.anki[iso]) extra = " (" + plural(data.anki[iso], "review") + ")";
-        if (r[0] === "shadow" && data.shadow[iso]) extra = " (" + plural(data.shadow[iso], "rep") + ")";
-        var status = on ? "done" + extra : "not done";
-        if (r[0] === "full") {
-          var mark = data.streak.frozen.indexOf(iso) !== -1 ? "❄️" : data.streak.repaired.indexOf(iso) !== -1 ? "🩹" : "";
-          if (mark) {
-            dot.setAttribute("data-mark", mark);
-            dot.textContent = mark;
-            status = mark === "❄️" ? "missed, a freeze kept the streak" : "missed, earned back the next day";
-          }
+        var status;
+        if (r[0] === "streak") {
+          var level = streakLevel(iso);
+          if (level !== "none") dot.setAttribute("data-level", level);
+          if (STREAK_MARKS[level]) dot.textContent = STREAK_MARKS[level];
+          status = STREAK_TEXT[level];
+        } else {
+          var on = done(r[0], iso);
+          if (on) dot.setAttribute("data-on", "1");
+          var extra = "";
+          if (r[0] === "vocab" && data.anki[iso]) extra = " (" + plural(data.anki[iso], "review") + ")";
+          if (r[0] === "shadow" && data.shadow[iso]) extra = " (" + plural(data.shadow[iso], "rep") + ")";
+          status = on ? "done" + extra : "not done";
         }
         dot.title = Hub.dateLabel(iso) + " · " + r[1] + ": " + status;
         grid.appendChild(dot);
